@@ -9,7 +9,7 @@ use std::thread;
 use std::time::Duration;
 extern crate libc;
 
-pub mod filter;
+mod filter;
 
 // Custom SkimItem implementation that uses our filter
 struct CustomItem {
@@ -101,7 +101,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .multi(false)
         .preview(Some("echo {}"))
         .preview_window(Some("right:50%:hidden"))
-        .prompt(Some("Search (use -term to exclude): "))
+        .prompt(Some("Pick GitHub repository: "))
         .exact(true)
         .tiebreak(Some("score".to_string()))
         .build()

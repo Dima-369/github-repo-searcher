@@ -106,4 +106,20 @@ mod tests {
         let result = filter_human(&items, "apple", |s| s.to_string());
         assert_eq!(result, vec!["Apple"]);
     }
+
+    #[test]
+    fn test_medical_medium_exclusion() {
+        let items = vec![
+            "medicalmedium-instagram (git@github.com:Dima-369/medicalmedium-instagram.git)",
+            "medical-medium-text-files (git@github.com:Dima-369/medical-medium-text-files.git)",
+            "medical-medium-demon-podcast-notes (git@github.com:Dima-369/medical-medium-demon-podcast-notes.git)"
+        ];
+
+        // Test with "medical -demon" to exclude demon podcast notes
+        let result = filter_human(&items, "medical -demon", |s| s.to_string());
+        assert_eq!(result, vec![
+            "medicalmedium-instagram (git@github.com:Dima-369/medicalmedium-instagram.git)",
+            "medical-medium-text-files (git@github.com:Dima-369/medical-medium-text-files.git)"
+        ]);
+    }
 }
