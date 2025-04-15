@@ -1,7 +1,6 @@
 use std::error::Error;
 use std::thread;
 use std::time::Duration;
-use std::io;
 extern crate libc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Once;

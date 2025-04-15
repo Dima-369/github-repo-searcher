@@ -51,25 +51,25 @@ pub async fn fetch_repos(token: &str) -> octocrab::Result<Vec<Repository>> {
 
 pub fn generate_dummy_repos() -> Vec<Repository> {
     println!("Using 100 dummy repositories for testing");
-    
+
     // Generate 100 dummy repositories with different names and categories
     let mut dummy_repos = Vec::with_capacity(100);
-    
+
     // Add some special repositories that are easy to find
     dummy_repos.push(("awesome-project".to_string(), "git@github.com:user/awesome-project.git".to_string()));
     dummy_repos.push(("test-repository".to_string(), "git@github.com:user/test-repository.git".to_string()));
     dummy_repos.push(("sample-code".to_string(), "git@github.com:user/sample-code.git".to_string()));
-    
+
     // Add repositories by category
     let categories = ["api", "web", "mobile", "backend", "frontend", "database", "utils", "tools", "docs", "test"];
-    
+
     for i in 1..=97 {
         let category = categories[i % categories.len()];
         let name = format!("{}-project-{}", category, i);
         let url = format!("git@github.com:user/{}.git", name);
         dummy_repos.push((name, url));
     }
-    
+
     dummy_repos
 }
 
@@ -77,7 +77,7 @@ pub fn extract_repo_info(selection: &str) -> Option<(String, String, Option<Stri
     // Extract repository name and URL from selection
     if let Some((repo_name, url_part)) = selection.split_once(" (") {
         let url = url_part.trim_end_matches(")");
-        let clone_cmd = format!("git clone {}", url);
+        let _clone_cmd = format!("git clone {}", url); // Prefix with underscore to indicate intentional non-use
 
         // Extract GitHub repo path for browser URL
         let browser_url = if url.contains("github.com") {

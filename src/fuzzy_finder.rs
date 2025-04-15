@@ -85,6 +85,9 @@ impl FuzzyFinder {
     }
 
     fn render<W: Write>(&self, screen: &mut W) -> io::Result<()> {
+        // Get terminal size
+        let (width, height) = termion::terminal_size().unwrap_or((80, 24));
+        
         // Clear screen
         write!(screen, "{}{}", clear::All, cursor::Goto(1, 1))?;
 
@@ -92,8 +95,11 @@ impl FuzzyFinder {
         write!(screen, "{}{}> {}{}", color::Fg(color::Blue), style::Bold, self.query, style::Reset)?;
         write!(screen, "{}\r\n", cursor::Goto(self.cursor_pos as u16 + 3, 1))?;
 
-        // Display items
-        let display_count = std::cmp::min(self.max_display, self.filtered_items.len());
+        // Calculate available space for items (accounting for header and status lines)
+        let available_lines = height as usize - 3; // Header line + status line + separator line
+        
+        // Adjust max_display based on available space
+        let display_count = std::cmp::min(available_lines, self.filtered_items.len());
         let end_idx = std::cmp::min(self.scroll_offset + display_count, self.filtered_items.len());
 
         for i in self.scroll_offset..end_idx {
@@ -109,8 +115,17 @@ impl FuzzyFinder {
             write!(screen, "\r\n")?;
         }
 
-        // Display status line
-        write!(screen, "{}{}{}\r\n", color::Fg(color::Blue), "-".repeat(50), style::Reset)?;
+        // Fill any remaining lines with empty space
+        let empty_lines = height as usize - 3 - (end_idx - self.scroll_offset);
+        for _ in 0..empty_lines {
+            write!(screen, "\r\n")?;
+        }
+        
+        // Position cursor at the bottom of the screen for status line
+        write!(screen, "{}", cursor::Goto(1, height - 2))?;
+        
+        // Display status line at the bottom
+        write!(screen, "{}{}{}\r\n", color::Fg(color::Blue), "-".repeat(width as usize), style::Reset)?;
         write!(screen, "{}[{}/{}] Press Ctrl+C to quit, Enter to select{}",
                color::Fg(color::Yellow),
                self.filtered_items.len(),
@@ -170,6 +185,11 @@ impl FuzzyFinder {
                     },
                     Key::Ctrl('c') => {
                         return None;
+                    },
+                    Key::Esc => {
+                        // Exit with code 0 on Escape
+                        println!("\nExiting due to Escape key press");
+                        unsafe { libc::_exit(0); }
                     },
                     _ => {}
                 }
