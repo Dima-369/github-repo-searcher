@@ -1,41 +1,192 @@
 use clap::{Arg, Command};
 use octocrab::Octocrab;
-use skim::prelude::*;
 use std::process::Command as StdCommand;
 use std::error::Error;
-use std::sync::Arc;
-use std::borrow::Cow;
 use std::thread;
 use std::time::Duration;
-use std::io::Write;
+use std::io::{self, Write, stdout, stdin};
 extern crate libc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Once;
 extern crate termion;
 use termion::input::TermRead;
+use termion::event::Key;
+use termion::raw::IntoRawMode;
+use termion::screen::IntoAlternateScreen;
+use termion::cursor;
+use termion::color;
+use termion::clear;
+use termion::style;
 
 mod filter;
 
-// Custom SkimItem implementation that uses our filter
-struct CustomItem {
-    text: String,
-    preview: Option<String>,
+// Custom UI for displaying and filtering repositories
+struct FuzzyFinder {
+    items: Vec<String>,
+    filtered_items: Vec<String>,
+    query: String,
+    cursor_pos: usize,
+    selected_index: usize,
+    max_display: usize,
+    scroll_offset: usize,
 }
 
-impl SkimItem for CustomItem {
-    fn text(&self) -> Cow<str> {
-        Cow::Borrowed(&self.text)
-    }
+impl FuzzyFinder {
+    fn new(items: Vec<String>) -> Self {
+        let filtered_items = items.clone();
+        let max_display = 10; // Number of items to display at once
 
-    fn preview(&self, _context: PreviewContext) -> ItemPreview {
-        match &self.preview {
-            Some(p) => ItemPreview::Text(p.clone()),
-            None => ItemPreview::Text(self.text.clone()),
+        Self {
+            items,
+            filtered_items,
+            query: String::new(),
+            cursor_pos: 0,
+            selected_index: 0,
+            max_display,
+            scroll_offset: 0,
         }
     }
 
-    fn output(&self) -> Cow<str> {
-        Cow::Borrowed(&self.text)
+    fn update_filter(&mut self) {
+        // Use the filter_human function to filter items based on query
+        self.filtered_items = filter::filter_human(&self.items, &self.query, |s| s.clone());
+
+        // Reset selection if it's out of bounds
+        if self.selected_index >= self.filtered_items.len() {
+            self.selected_index = if self.filtered_items.is_empty() { 0 } else { self.filtered_items.len() - 1 };
+        }
+
+        // Reset scroll offset if needed
+        if self.selected_index < self.scroll_offset {
+            self.scroll_offset = self.selected_index;
+        } else if self.selected_index >= self.scroll_offset + self.max_display {
+            self.scroll_offset = self.selected_index - self.max_display + 1;
+        }
+    }
+
+    fn move_cursor_up(&mut self) {
+        if !self.filtered_items.is_empty() {
+            if self.selected_index > 0 {
+                self.selected_index -= 1;
+
+                // Adjust scroll offset if needed
+                if self.selected_index < self.scroll_offset {
+                    self.scroll_offset = self.selected_index;
+                }
+            }
+        }
+    }
+
+    fn move_cursor_down(&mut self) {
+        if !self.filtered_items.is_empty() {
+            if self.selected_index < self.filtered_items.len() - 1 {
+                self.selected_index += 1;
+
+                // Adjust scroll offset if needed
+                if self.selected_index >= self.scroll_offset + self.max_display {
+                    self.scroll_offset = self.selected_index - self.max_display + 1;
+                }
+            }
+        }
+    }
+
+    fn render<W: Write>(&self, screen: &mut W) -> io::Result<()> {
+        // Clear screen
+        write!(screen, "{}{}", clear::All, cursor::Goto(1, 1))?;
+
+        // Display header
+        write!(screen, "{}{}> {}{}", color::Fg(color::Blue), style::Bold, self.query, style::Reset)?;
+        write!(screen, "{}\r\n", cursor::Goto(self.cursor_pos as u16 + 3, 1))?;
+
+        // Display items
+        let display_count = std::cmp::min(self.max_display, self.filtered_items.len());
+        let end_idx = std::cmp::min(self.scroll_offset + display_count, self.filtered_items.len());
+
+        for i in self.scroll_offset..end_idx {
+            let item = &self.filtered_items[i];
+
+            // Highlight selected item
+            if i == self.selected_index {
+                write!(screen, "{}{}{} {}{}", color::Fg(color::Green), style::Bold, ">", item, style::Reset)?;
+            } else {
+                write!(screen, "  {}", item)?;
+            }
+
+            write!(screen, "\r\n")?;
+        }
+
+        // Display status line
+        write!(screen, "{}{}{}\r\n", color::Fg(color::Blue), "-".repeat(50), style::Reset)?;
+        write!(screen, "{}[{}/{}] Press Ctrl+C to quit, Enter to select{}",
+               color::Fg(color::Yellow),
+               self.filtered_items.len(),
+               self.items.len(),
+               style::Reset)?;
+
+        screen.flush()?;
+        Ok(())
+    }
+
+    fn run(&mut self) -> Option<String> {
+        // Set up terminal
+        let mut screen = stdout().into_raw_mode().unwrap()
+            .into_alternate_screen().unwrap();
+
+        // Initial render
+        self.render(&mut screen).unwrap();
+
+        // Process input
+        let stdin = stdin();
+        let mut keys = stdin.keys();
+
+        loop {
+            // Check if interrupted
+            if INTERRUPTED.load(Ordering::SeqCst) {
+                return None;
+            }
+
+            // Process key input
+            if let Some(Ok(key)) = keys.next() {
+                match key {
+                    Key::Char('\n') | Key::Char('\r') => {
+                        // Return selected item
+                        if !self.filtered_items.is_empty() {
+                            return Some(self.filtered_items[self.selected_index].clone());
+                        }
+                    },
+                    Key::Char(c) => {
+                        // Add character to query
+                        self.query.push(c);
+                        self.cursor_pos += 1;
+                        self.update_filter();
+                    },
+                    Key::Backspace => {
+                        // Remove character from query
+                        if !self.query.is_empty() && self.cursor_pos > 0 {
+                            self.query.pop();
+                            self.cursor_pos -= 1;
+                            self.update_filter();
+                        }
+                    },
+                    Key::Up => {
+                        self.move_cursor_up();
+                    },
+                    Key::Down => {
+                        self.move_cursor_down();
+                    },
+                    Key::Ctrl('c') => {
+                        return None;
+                    },
+                    _ => {}
+                }
+
+                // Re-render after each key press
+                self.render(&mut screen).unwrap();
+            }
+
+            // Small sleep to prevent CPU hogging
+            thread::sleep(Duration::from_millis(10));
+        }
     }
 }
 
@@ -63,7 +214,7 @@ async fn fetch_repos(token: &str) -> octocrab::Result<Vec<(String, String)>> {
             .map(|repo| (repo.name, repo.ssh_url.unwrap_or_default()))
     );
 
-    print!("{}✓", "\r".repeat(50)); // Clear line and show checkmark
+    print!("{}\u{2713}", "\r".repeat(50)); // Clear line and show checkmark
     print!("\rFetched page {} ({} repos so far)... ", page_count, all_repos.len());
     std::io::stdout().flush().unwrap();
 
@@ -77,12 +228,12 @@ async fn fetch_repos(token: &str) -> octocrab::Result<Vec<(String, String)>> {
                 .into_iter()
                 .map(|repo| (repo.name, repo.ssh_url.unwrap_or_default()))
         );
-        print!("{}✓", "\r".repeat(50)); // Clear line and show checkmark
+        print!("{}\u{2713}", "\r".repeat(50)); // Clear line and show checkmark
         print!("\rFetched page {} ({} repos so far)... ", page_count, all_repos.len());
         std::io::stdout().flush().unwrap();
     }
 
-    println!("{}✓", "\r".repeat(50)); // Clear line and show checkmark
+    println!("{}\u{2713}", "\r".repeat(50)); // Clear line and show checkmark
     println!("\rFetched {} repositories from {} pages", all_repos.len(), page_count);
     Ok(all_repos)
 }
@@ -146,123 +297,21 @@ async fn main() -> Result<(), Box<dyn Error>> {
         fetch_repos(token).await?
     };
 
-    // Create fuzzy filter choices
+    // Create formatted choices for the fuzzy finder
     let choices: Vec<String> = repos
         .into_iter()
         .map(|(name, url)| format!("{} ({})", name, url))
         .collect();
 
-    // Set up skim options
-    let options = SkimOptionsBuilder::default()
-        .height(Some("50%"))
-        .multi(false)
-        .preview(Some("echo {}"))
-        .preview_window(Some("right:50%:hidden"))
-        .prompt(Some("Pick GitHub repository: "))
-        .exact(true)
-        .tiebreak(Some("score".to_string()))
-        .bind(vec!["esc:abort"])  // Allow quitting with Escape key
-        .exit0(true)  // Exit immediately with status code 0 when there's no match
-        .build()
-        .unwrap();
-
-    // Create a channel for sending items to skim
-    let (tx, rx): (SkimItemSender, SkimItemReceiver) = unbounded();
-
-    // Send all choices to skim
-    for choice in choices {
-        let item = CustomItem {
-            text: choice,
-            preview: None,
-        };
-        tx.send(Arc::new(item)).unwrap();
-    }
-    drop(tx);
-
-    // Create a custom filter transformer
-    let transformer = Box::new(|query: &str, items: Vec<Arc<dyn SkimItem>>| {
-        if query.is_empty() {
-            return items;
+    // Create and run the fuzzy finder
+    let mut finder = FuzzyFinder::new(choices);
+    let selection = match finder.run() {
+        Some(selected) => selected,
+        None => {
+            println!("No selection made");
+            unsafe { libc::_exit(0); }
         }
-
-        // Check if query contains exclusion terms
-        let has_exclusion = query.contains(" -");
-
-        // If no exclusion, let skim handle it
-        if !has_exclusion {
-            return items;
-        }
-
-        println!("Using custom exclusion filter for query: '{}'", query);
-
-        // Extract strings from SkimItems
-        let item_strings: Vec<(usize, String)> = items
-            .iter()
-            .enumerate()
-            .map(|(i, item)| (i, item.text().to_string()))
-            .collect();
-
-        // Apply our custom filter
-        let filtered_items = filter::filter_human(&item_strings, query, |(_, s)| s.clone());
-        println!("Found {} matches after exclusion filtering", filtered_items.len());
-
-        let filtered_indices = filtered_items
-            .into_iter()
-            .map(|i| i.0) // Extract the index from the tuple
-            .collect::<Vec<_>>();
-
-        // If no items match, return an empty vector
-        if filtered_indices.is_empty() {
-            return Vec::new();
-        }
-
-        // Return only the items that passed the filter
-        filtered_indices.into_iter().map(|i| items[i].clone()).collect()
-    });
-
-    // Apply our custom filter to the items before running skim
-    let filtered_rx = {
-        let (filtered_tx, filtered_rx): (SkimItemSender, SkimItemReceiver) = unbounded();
-
-        // Create a thread to handle filtering
-        std::thread::spawn(move || {
-            let mut items = Vec::new();
-            while let Ok(item) = rx.recv() {
-                items.push(item);
-            }
-
-            // Apply initial filtering (empty query shows all)
-            for item in transformer("", items) {
-                filtered_tx.send(item).unwrap();
-            }
-        });
-
-        filtered_rx
     };
-
-    // Run skim with the filtered items
-    let skim_output = Skim::run_with(&options, Some(filtered_rx));
-
-    // Check if user aborted (pressed Escape)
-    if skim_output.is_none() {
-        println!("Search aborted with Escape key");
-        unsafe {
-            libc::_exit(0);
-        }
-    }
-
-    let output = skim_output.map(|out| out.selected_items).unwrap_or_default();
-
-    // Get the selected item
-    if output.is_empty() {
-        println!("No selection made");
-        // Force immediate exit
-        unsafe {
-            libc::_exit(0);
-        }
-    }
-
-    let selection = output[0].output().to_string();
 
     // Extract repository name and URL from selection
     if let Some((repo_name, url)) = selection.rsplit_once(' ') {
@@ -322,17 +371,17 @@ async fn main() -> Result<(), Box<dyn Error>> {
             if let Some(Ok(key)) = keys.next() {
                 match key {
                     termion::event::Key::Char('c') => {
-                        println!("\n\033[1;32m✓\033[0m Copying git clone command...");
+                        println!("\n\033[1;32m\u{2713}\033[0m Copying git clone command...");
                         choice = String::from("1");
                         selected = true;
                     },
                     termion::event::Key::Char('s') => {
-                        println!("\n\033[1;32m✓\033[0m Copying SSH URL...");
+                        println!("\n\033[1;32m\u{2713}\033[0m Copying SSH URL...");
                         choice = String::from("2");
                         selected = true;
                     },
                     termion::event::Key::Char('o') if browser_url.is_some() => {
-                        println!("\n\033[1;32m✓\033[0m Opening in browser...");
+                        println!("\n\033[1;32m\u{2713}\033[0m Opening in browser...");
                         choice = String::from("3");
                         selected = true;
                     },
@@ -429,11 +478,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
         // Small delay to ensure operation completes
         thread::sleep(Duration::from_millis(100));
-
-        // Force immediate exit
-        unsafe {
-            libc::_exit(0);
-        }
     }
 
     Ok(())
