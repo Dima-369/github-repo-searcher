@@ -5,6 +5,8 @@ use std::process::Command as StdCommand;
 use std::error::Error;
 use std::sync::Arc;
 use std::borrow::Cow;
+use std::thread;
+use std::time::Duration;
 extern crate libc;
 
 pub mod filter;
@@ -186,30 +188,35 @@ async fn main() -> Result<(), Box<dyn Error>> {
     if let Some((_, url)) = selection.rsplit_once(' ') {
         let url = url.trim_matches(|c| c == '(' || c == ')');
 
-        // Copy to clipboard
+        // Copy to clipboard - use a more direct approach
         if cfg!(target_os = "macos") {
-            let status = StdCommand::new("pbcopy")
+            // Use a synchronous approach to ensure copying completes
+            let output = StdCommand::new("pbcopy")
                 .arg(url)
-                .spawn()
-                .and_then(|mut child| child.wait());
+                .output();
 
-            if let Err(e) = status {
-                eprintln!("Failed to copy to clipboard: {}", e);
+            match output {
+                Ok(_) => println!("Copied SSH URL to clipboard: {}", url),
+                Err(e) => eprintln!("Failed to copy to clipboard: {}", e)
             }
         } else if cfg!(target_os = "linux") {
-            let status = StdCommand::new("xclip")
+            // Use a synchronous approach to ensure copying completes
+            let output = StdCommand::new("xclip")
                 .arg("-selection")
                 .arg("clipboard")
                 .arg(url)
-                .spawn()
-                .and_then(|mut child| child.wait());
+                .output();
 
-            if let Err(e) = status {
-                eprintln!("Failed to copy to clipboard: {}", e);
+            match output {
+                Ok(_) => println!("Copied SSH URL to clipboard: {}", url),
+                Err(e) => eprintln!("Failed to copy to clipboard: {}", e)
             }
+        } else {
+            println!("Clipboard not supported on this platform. URL: {}", url);
         }
 
-        println!("Copied SSH URL to clipboard: {}", url);
+        // Small delay to ensure clipboard operation completes
+        thread::sleep(Duration::from_millis(100));
 
         // Force immediate exit
         unsafe {
