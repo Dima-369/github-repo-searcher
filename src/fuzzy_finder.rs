@@ -231,8 +231,9 @@ impl FuzzyFinder {
                             let selected = self.filtered_items[self.selected_index].clone();
 
                             // Properly restore terminal state before returning
-                            write!(screen, "{}", termion::cursor::Show).unwrap();
+                            write!(screen, "{}{}", termion::screen::ToMainScreen, termion::cursor::Show).unwrap();
                             screen.flush().unwrap();
+                            drop(screen); // Explicitly drop the screen to ensure it's properly cleaned up
 
                             // Return the selected item to be processed
                             return Some(selected);
@@ -260,15 +261,17 @@ impl FuzzyFinder {
                     }
                     Key::Ctrl('c') => {
                         // Properly restore terminal state before exiting
-                        write!(screen, "{}", termion::cursor::Show).unwrap();
+                        write!(screen, "{}{}", termion::screen::ToMainScreen, termion::cursor::Show).unwrap();
                         screen.flush().unwrap();
+                        drop(screen); // Explicitly drop the screen to ensure it's properly cleaned up
                         println!("\nExiting...");
                         process::exit(0);
                     }
                     Key::Esc => {
                         // Properly restore terminal state before exiting
-                        write!(screen, "{}", termion::cursor::Show).unwrap();
+                        write!(screen, "{}{}", termion::screen::ToMainScreen, termion::cursor::Show).unwrap();
                         screen.flush().unwrap();
+                        drop(screen); // Explicitly drop the screen to ensure it's properly cleaned up
                         println!("\nExiting...");
                         process::exit(0);
                     }

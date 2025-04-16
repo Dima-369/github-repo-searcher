@@ -3,6 +3,20 @@ use std::io::Write;
 use std::process;
 use std::time::Duration;
 extern crate termion;
+use termion::input::TermRead;
+
+// Function to clean up terminal state before exiting
+fn cleanup_terminal() {
+    // Ensure terminal is in a clean state
+    print!("{}{}", termion::screen::ToMainScreen, termion::cursor::Show);
+    std::io::stdout().flush().unwrap();
+
+    // Reset terminal attributes to ensure proper cleanup
+    if let Ok(mut term) = termion::get_tty() {
+        let _ = termion::async_stdin().keys().next(); // Consume any pending input
+        let _ = termion::terminal_size(); // Force terminal refresh
+    }
+}
 
 // No platform-specific imports needed with ctrlc crate
 
@@ -17,11 +31,8 @@ mod github;
 fn setup_ctrl_c_handler() {
     // Use the ctrlc crate which works reliably across platforms
     ctrlc::set_handler(move || {
-        // Ensure terminal is in a clean state before exiting
-        print!("{}{}\nReceived Ctrl+C, exiting...",
-               termion::screen::ToMainScreen,
-               termion::cursor::Show);
-        std::io::stdout().flush().unwrap();
+        cleanup_terminal();
+        println!("\nReceived Ctrl+C, exiting...");
         process::exit(0);
     }).expect("Error setting Ctrl+C handler");
 }
@@ -85,6 +96,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         let selection = match finder.run() {
             Some(selected) => selected,
             None => {
+                cleanup_terminal();
                 println!("No selection made");
                 process::exit(0);
             }
@@ -143,5 +155,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         }
     }
     // The loop above never exits normally, only through Ctrl+C or Esc
-    // which call libc::exit(0), so this is unreachable
+    // which call process::exit(0), so this is unreachable
+    #[allow(unreachable_code)]
+    Ok(())
 }
