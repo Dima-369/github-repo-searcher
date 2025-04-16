@@ -3,7 +3,6 @@ use clap::{Arg, Command};
 pub struct AppArgs {
     pub use_dummy: bool,
     pub token: Option<String>,
-    pub username: String,
 }
 
 pub fn parse_args() -> AppArgs {
@@ -26,14 +25,6 @@ pub fn parse_args() -> AppArgs {
                 .help("Use 100 dummy repositories for testing the UI")
                 .action(clap::ArgAction::SetTrue),
         )
-        .arg(
-            Arg::new("username")
-                .short('u')
-                .long("username")
-                .value_name("GITHUB_USERNAME")
-                .help("GitHub username")
-                .default_value("dima-369")
-        )
         .get_matches();
 
     // Check if dummy mode is enabled
@@ -44,14 +35,8 @@ pub fn parse_args() -> AppArgs {
         None
     };
 
-    // Get the GitHub username
-    let username = matches.get_one::<String>("username")
-        .cloned()
-        .unwrap_or_else(|| "dima-369".to_string());
-
     AppArgs {
         use_dummy,
         token,
-        username,
     }
 }
