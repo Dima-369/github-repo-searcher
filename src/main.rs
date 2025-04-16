@@ -2,66 +2,10 @@ use std::error::Error;
 use std::process;
 use std::time::Duration;
 
-// Function to determine appropriate emoji based on repository name and description
-fn get_category_emoji(name: &str, description: &str) -> &'static str {
-    let text = format!("{} {}", name, description).to_lowercase();
-
-    // Web/Frontend related
-    if text.contains("web") || text.contains("frontend") || text.contains("html") ||
-       text.contains("css") || text.contains("javascript") || text.contains("react") ||
-       text.contains("vue") || text.contains("angular") {
-        return "🌐";
-    }
-
-    // Backend related
-    if text.contains("backend") || text.contains("server") || text.contains("api") ||
-       text.contains("database") || text.contains("db") {
-        return "🖥️";
-    }
-
-    // Mobile related
-    if text.contains("mobile") || text.contains("android") || text.contains("ios") ||
-       text.contains("app") || text.contains("flutter") || text.contains("swift") {
-        return "📱";
-    }
-
-    // Data science/ML related
-    if text.contains("data") || text.contains("machine learning") || text.contains("ml") ||
-       text.contains("ai") || text.contains("analytics") || text.contains("tensorflow") ||
-       text.contains("pytorch") {
-        return "📊";
-    }
-
-    // Tools/Utilities
-    if text.contains("tool") || text.contains("util") || text.contains("cli") ||
-       text.contains("command") || text.contains("script") {
-        return "🔧";
-    }
-
-    // Documentation/Learning
-    if text.contains("doc") || text.contains("tutorial") || text.contains("learn") ||
-       text.contains("guide") || text.contains("book") {
-        return "📚";
-    }
-
-    // Game development
-    if text.contains("game") || text.contains("unity") || text.contains("unreal") ||
-       text.contains("godot") {
-        return "🎮";
-    }
-
-    // Testing
-    if text.contains("test") || text.contains("spec") || text.contains("qa") {
-        return "🧪";
-    }
-
-    // Default - no specific category identified
-    ""
-}
-
 mod cache;
 mod cli;
 mod filter;
+mod formatter;
 mod fuzzy_finder;
 mod github;
 
@@ -110,25 +54,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let choices: Vec<String> = repos
         .into_iter()
         .map(|(name, _url, description, _owner, is_fork, is_private)| {
-            // Add icons for fork and private status
-            let fork_icon = if is_fork { "🍴 " } else { "" };
-            let private_icon = if is_private { "🔒 " } else { "" };
-
-            // Format the repository name with icons
-            let formatted_name = format!("{}{}{}", fork_icon, private_icon, name);
-
-            // Add category emoji based on repository name or description
-            let category_emoji = get_category_emoji(&name, &description);
-
-            if description.is_empty() {
-                if !category_emoji.is_empty() {
-                    format!("{} {}", formatted_name, category_emoji)
-                } else {
-                    formatted_name
-                }
-            } else {
-                format!("{} ({}) {}", formatted_name, description, category_emoji)
-            }
+            formatter::format_repository(&name, &description, is_fork, is_private)
         })
         .collect();
 
