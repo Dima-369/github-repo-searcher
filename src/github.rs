@@ -25,7 +25,7 @@ pub async fn fetch_repos(token: &str) -> octocrab::Result<Vec<Repository>> {
             .map(|repo| (
                 repo.name,
                 repo.ssh_url.unwrap_or_default(),
-                repo.description.unwrap_or_else(|| "No description".to_string())
+                repo.description.unwrap_or_default()
             ))
     );
 
@@ -44,7 +44,7 @@ pub async fn fetch_repos(token: &str) -> octocrab::Result<Vec<Repository>> {
                 .map(|repo| (
                     repo.name,
                     repo.ssh_url.unwrap_or_default(),
-                    repo.description.unwrap_or_else(|| "No description".to_string())
+                    repo.description.unwrap_or_default()
                 ))
         );
         print!("{}\u{2713}", "\r".repeat(50)); // Clear line and show checkmark
@@ -84,17 +84,19 @@ pub fn generate_dummy_repos() -> Vec<Repository> {
 
 pub fn extract_repo_info(selection: &str, username: &str) -> Option<(String, String, Option<String>)> {
     // Extract repository name and description from selection
-    if let Some((repo_name, description_part)) = selection.split_once(" (") {
-        let _description = description_part.trim_end_matches(")"); // Prefix with underscore to indicate intentional non-use
-
-        // Construct a URL based on the repository name and username
-        let url = format!("git@github.com:{}/{}.git", username, repo_name);
-
-        // Extract GitHub repo path for browser URL
-        let browser_url = Some(format!("https://github.com/{}/{}", username, repo_name));
-
-        Some((repo_name.to_string(), url, browser_url))
+    let repo_name = if let Some((name, description_part)) = selection.split_once(" (") {
+        // Selection has a description in parentheses
+        name
     } else {
-        None
-    }
+        // Selection is just the repo name without description
+        selection
+    };
+
+    // Construct a URL based on the repository name and username
+    let url = format!("git@github.com:{}/{}.git", username, repo_name);
+
+    // Extract GitHub repo path for browser URL
+    let browser_url = Some(format!("https://github.com/{}/{}", username, repo_name));
+
+    Some((repo_name.to_string(), url, browser_url))
 }

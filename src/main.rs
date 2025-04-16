@@ -24,7 +24,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // Create formatted choices for the fuzzy finder
     let choices: Vec<String> = repos
         .into_iter()
-        .map(|(name, _url, description)| format!("{} ({})", name, description))
+        .map(|(name, _url, description)| {
+            if description.is_empty() {
+                name.clone()
+            } else {
+                format!("{} ({})", name, description)
+            }
+        })
         .collect();
 
     // Create and run the fuzzy finder
