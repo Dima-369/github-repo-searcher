@@ -7,10 +7,10 @@
 //!
 //! Repositories are displayed with visual indicators to help quickly identify their type:
 //!
-//! ## Status Indicators (at the end of repository name)
+//! ## Status Indicators
 //!
-//! - 🍴 - Fork of another repository
-//! - 🔒 - Private repository
+//! - (fork) or (fork: description) - Fork of another repository
+//! - 🔒 - Private repository (shown at the end of repository name)
 
 use clap::{Arg, Command};
 

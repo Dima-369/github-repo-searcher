@@ -32,18 +32,18 @@ gh-url-picker --dummy
 
 Repositories are displayed with visual indicators to help you quickly identify their type:
 
-### Status Indicators (at the end of repository name)
+### Status Indicators
 
-- 🍴 - Fork of another repository
-- 🔒 - Private repository
+- `(fork)` or `(fork: description)` - Fork of another repository
+- 🔒 - Private repository (shown at the end of repository name)
 
 ### Examples
 
 ```
-repo-name 🍴 (A forked repository)
+repo-name (fork: A forked repository)
 web-project (A frontend application)
 private-api 🔒 (Internal API service)
-game-demo 🍴 🔒 (Private fork of a game)
+game-demo 🔒 (fork: Private fork of a game)
 ```
 
 ## Keyboard Controls
