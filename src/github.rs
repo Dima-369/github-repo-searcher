@@ -1,18 +1,18 @@
 use octocrab::Octocrab;
 use std::io::Write;
 
-pub type Repository = (String, String, String, String); // (name, ssh_url, description, owner)
+pub type Repository = (String, String, String, String, bool, bool); // (name, ssh_url, description, owner, is_fork, is_private)
 
 pub async fn fetch_repos(token: &str) -> octocrab::Result<(String, Vec<Repository>)> {
     print!("Fetching user information... ");
     std::io::stdout().flush().unwrap();
 
     let octocrab = Octocrab::builder().personal_token(token.to_string()).build()?;
-    
+
     // Get authenticated user information
     let user = octocrab.current().user().await?;
     let username = user.login;
-    
+
     println!("✓"); // Show checkmark on its own line
     print!("Fetching repositories for {}... ", username);
     std::io::stdout().flush().unwrap();
@@ -35,7 +35,9 @@ pub async fn fetch_repos(token: &str) -> octocrab::Result<(String, Vec<Repositor
                 repo.name,
                 repo.ssh_url.unwrap_or_default(),
                 repo.description.unwrap_or_default(),
-                username.clone()
+                username.clone(),
+                repo.fork.unwrap_or(false),
+                repo.private.unwrap_or(false)
             ))
     );
 
@@ -55,7 +57,9 @@ pub async fn fetch_repos(token: &str) -> octocrab::Result<(String, Vec<Repositor
                     repo.name,
                     repo.ssh_url.unwrap_or_default(),
                     repo.description.unwrap_or_default(),
-                    username.clone()
+                    username.clone(),
+                    repo.fork.unwrap_or(false),
+                    repo.private.unwrap_or(false)
                 ))
         );
         print!("\r                                                  "); // Clear the line
@@ -76,9 +80,9 @@ pub fn generate_dummy_repos() -> (String, Vec<Repository>) {
     let mut dummy_repos = Vec::with_capacity(100);
 
     // Add some special repositories that are easy to find
-    dummy_repos.push(("clj-basic-image-cache-server".to_string(), "git@github.com:dima-369/clj-basic-image-cache-server.git".to_string(), "A basic image cache server written in Clojure".to_string(), username.clone()));
-    dummy_repos.push(("rust-web-server".to_string(), "git@github.com:dima-369/rust-web-server.git".to_string(), "A web server written in Rust".to_string(), username.clone()));
-    dummy_repos.push(("go-microservices".to_string(), "git@github.com:dima-369/go-microservices.git".to_string(), "Microservices examples in Go".to_string(), username.clone()));
+    dummy_repos.push(("clj-basic-image-cache-server".to_string(), "git@github.com:dima-369/clj-basic-image-cache-server.git".to_string(), "A basic image cache server written in Clojure".to_string(), username.clone(), true, false));
+    dummy_repos.push(("rust-web-server".to_string(), "git@github.com:dima-369/rust-web-server.git".to_string(), "A web server written in Rust".to_string(), username.clone(), false, true));
+    dummy_repos.push(("go-microservices".to_string(), "git@github.com:dima-369/go-microservices.git".to_string(), "Microservices examples in Go".to_string(), username.clone(), false, false));
 
     // Add repositories by category
     let categories = ["api", "web", "mobile", "backend", "frontend", "database", "utils", "tools", "docs", "test"];
@@ -88,7 +92,10 @@ pub fn generate_dummy_repos() -> (String, Vec<Repository>) {
         let name = format!("{}-project-{}", category, i);
         let url = format!("git@github.com:{}/{}.git", username, name);
         let description = format!("A {} project for {}", category, if i % 2 == 0 { "development" } else { "production" });
-        dummy_repos.push((name, url, description, username.clone()));
+        // Make some repos forks and some private for variety
+        let is_fork = i % 5 == 0;  // Every 5th repo is a fork
+        let is_private = i % 7 == 0; // Every 7th repo is private
+        dummy_repos.push((name, url, description, username.clone(), is_fork, is_private));
     }
 
     (username, dummy_repos)

@@ -106,12 +106,23 @@ impl FuzzyFinder {
 
             // Calculate available width for text (accounting for the prefix)
             let prefix_len = 2; // Both "> " and "  " are 2 characters
-            let available_width = width as usize - prefix_len;
+            let available_width = width as usize - prefix_len - 5; // Extra buffer for emojis and safety
 
             // Truncate item text if it's too long
-            let display_text = if item.len() > available_width {
-                // Truncate and add ellipsis
-                format!("{:.width$}…", item, width = available_width - 1)
+            let display_text = if item.chars().count() > available_width {
+                // Truncate and add ellipsis, being careful with multi-byte characters like emojis
+                let mut truncated = String::new();
+                let mut char_count = 0;
+
+                for c in item.chars() {
+                    if char_count >= available_width - 1 {
+                        break;
+                    }
+                    truncated.push(c);
+                    char_count += 1;
+                }
+
+                format!("{truncated}…")
             } else {
                 item.clone()
             };
