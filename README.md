@@ -52,6 +52,10 @@ game-demo 🍴 🔒 (Private fork of a game)
 - **Enter**: Select repository and open in browser
 - **Ctrl+C or Esc**: Exit the program
 
+## Bugs
+
+- `Ctrl-C` does not work when downloading repository info
+
 ## Future Plans
 
 - Add GitLab support
