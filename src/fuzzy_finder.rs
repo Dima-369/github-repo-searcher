@@ -25,6 +25,20 @@ pub struct FuzzyFinder {
 }
 
 impl FuzzyFinder {
+    // Helper method to clean up terminal state
+    fn cleanup_terminal<W: Write>(screen: &mut W) {
+        write!(screen, "{}{}", termion::screen::ToMainScreen, cursor::Show).unwrap();
+        screen.flush().unwrap();
+    }
+
+    // Helper method to exit the program
+    fn exit_program<W: Write>(screen: &mut W, message: &str) -> ! {
+        Self::cleanup_terminal(screen);
+        drop(screen); // Explicitly drop the screen to ensure it's properly cleaned up
+        println!("{}", message);
+        process::exit(0);
+    }
+
     pub fn new(items: Vec<String>) -> Self {
         let filtered_items = items.clone();
         let max_display = 10; // Number of items to display at once
@@ -231,8 +245,7 @@ impl FuzzyFinder {
                             let selected = self.filtered_items[self.selected_index].clone();
 
                             // Properly restore terminal state before returning
-                            write!(screen, "{}{}", termion::screen::ToMainScreen, cursor::Show).unwrap();
-                            screen.flush().unwrap();
+                            Self::cleanup_terminal(&mut screen);
                             drop(screen); // Explicitly drop the screen to ensure it's properly cleaned up
 
                             // Return the selected item to be processed
@@ -260,20 +273,10 @@ impl FuzzyFinder {
                         self.move_cursor_down();
                     }
                     Key::Ctrl('c') => {
-                        // Properly restore terminal state before exiting
-                        write!(screen, "{}{}", termion::screen::ToMainScreen, cursor::Show).unwrap();
-                        screen.flush().unwrap();
-                        drop(screen); // Explicitly drop the screen to ensure it's properly cleaned up
-                        println!("\nExiting...");
-                        process::exit(0);
+                        Self::exit_program(&mut screen, "\nExiting...");
                     }
                     Key::Esc => {
-                        // Properly restore terminal state before exiting
-                        write!(screen, "{}{}", termion::screen::ToMainScreen, cursor::Show).unwrap();
-                        screen.flush().unwrap();
-                        drop(screen); // Explicitly drop the screen to ensure it's properly cleaned up
-                        println!("\nExiting...");
-                        process::exit(0);
+                        Self::exit_program(&mut screen, "\nExiting...");
                     }
                     _ => {}
                 }

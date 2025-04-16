@@ -1,7 +1,27 @@
 use octocrab::Octocrab;
+use octocrab::models::Repository as OctocrabRepo;
 use std::io::Write;
 
 pub type Repository = (String, String, String, String, bool, bool); // (name, ssh_url, description, owner, is_fork, is_private)
+
+// Helper function to convert GitHub API repository to our Repository type
+fn convert_repo(repo: OctocrabRepo, username: &str) -> Repository {
+    (
+        repo.name,
+        repo.ssh_url.unwrap_or_default(),
+        repo.description.unwrap_or_default(),
+        username.to_string(),
+        repo.fork.unwrap_or(false),
+        repo.private.unwrap_or(false)
+    )
+}
+
+// Helper function to update progress display
+fn update_progress(page_count: usize, repos_count: usize) {
+    print!("\r                                                  "); // Clear the line
+    print!("\rFetched page {} ({} repos so far)... ", page_count, repos_count);
+    std::io::stdout().flush().unwrap();
+}
 
 pub async fn fetch_repos(token: &str) -> octocrab::Result<(String, Vec<Repository>)> {
     print!("Fetching user information... ");
@@ -31,19 +51,10 @@ pub async fn fetch_repos(token: &str) -> octocrab::Result<(String, Vec<Repositor
     all_repos.extend(
         page.items
             .into_iter()
-            .map(|repo| (
-                repo.name,
-                repo.ssh_url.unwrap_or_default(),
-                repo.description.unwrap_or_default(),
-                username.clone(),
-                repo.fork.unwrap_or(false),
-                repo.private.unwrap_or(false)
-            ))
+            .map(|repo| convert_repo(repo, &username))
     );
 
-    print!("\r                                                  "); // Clear the line
-    print!("\rFetched page {} ({} repos so far)... ", page_count, all_repos.len());
-    std::io::stdout().flush().unwrap();
+    update_progress(page_count, all_repos.len());
 
     // Fetch all remaining pages
     while let Some(next_page) = octocrab.get_page(&page.next).await? {
@@ -56,18 +67,9 @@ pub async fn fetch_repos(token: &str) -> octocrab::Result<(String, Vec<Repositor
         all_repos.extend(
             page.items
                 .into_iter()
-                .map(|repo| (
-                    repo.name,
-                    repo.ssh_url.unwrap_or_default(),
-                    repo.description.unwrap_or_default(),
-                    username.clone(),
-                    repo.fork.unwrap_or(false),
-                    repo.private.unwrap_or(false)
-                ))
+                .map(|repo| convert_repo(repo, &username))
         );
-        print!("\r                                                  "); // Clear the line
-        print!("\rFetched page {} ({} repos so far)... ", page_count, all_repos.len());
-        std::io::stdout().flush().unwrap();
+        update_progress(page_count, all_repos.len());
     }
 
     println!("✓"); // Show checkmark on its own line
