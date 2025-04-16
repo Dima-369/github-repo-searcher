@@ -27,7 +27,9 @@ pub fn format_repository(name: &str, description: &str, is_fork: bool, is_privat
     if description.is_empty() {
         formatted_name
     } else {
-        format!("{} ({})", formatted_name, description)
+        // Trim the description before formatting
+        let trimmed_description = description.trim();
+        format!("{} ({})", formatted_name, trimmed_description)
     }
 }
 
@@ -88,6 +90,12 @@ mod tests {
         assert_eq!(
             format_repository("private-fork", "", true, true),
             "private-fork 🍴 🔒"
+        );
+
+        // Repository with description containing extra whitespace
+        assert_eq!(
+            format_repository("whitespace-test", "  Description with extra spaces  ", false, false),
+            "whitespace-test (Description with extra spaces)"
         );
     }
 }
