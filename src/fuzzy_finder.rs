@@ -242,7 +242,7 @@ impl FuzzyFinder {
                         self.move_cursor_down();
                     }
                     Key::Ctrl('c') => {
-                        return None;
+                        process::exit(0);
                     }
                     Key::Esc => {
                         process::exit(0);
