@@ -34,7 +34,7 @@ impl FuzzyFinder {
     // Helper method to exit the program
     fn exit_program<W: Write>(screen: &mut W, message: &str) -> ! {
         Self::cleanup_terminal(screen);
-        drop(screen); // Explicitly drop the screen to ensure it's properly cleaned up
+        let _ = screen; // Mark screen as used without trying to drop the reference
         println!("{}", message);
         process::exit(0);
     }
@@ -246,7 +246,7 @@ impl FuzzyFinder {
 
                             // Properly restore terminal state before returning
                             Self::cleanup_terminal(&mut screen);
-                            drop(screen); // Explicitly drop the screen to ensure it's properly cleaned up
+                            let _ = screen; // Mark screen as used without trying to drop the reference
 
                             // Return the selected item to be processed
                             return Some(selected);
