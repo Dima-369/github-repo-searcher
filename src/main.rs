@@ -26,6 +26,7 @@ mod filter;
 mod formatter;
 mod fuzzy_finder;
 mod github;
+mod gitlab;
 
 // Set up a Ctrl+C handler that works globally
 fn setup_ctrl_c_handler() {
@@ -44,47 +45,239 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // Parse command line arguments
     let args = cli::parse_args();
 
-    // Get repositories (either real or dummy) and the username
-    let (username, repos) = if args.use_dummy {
-        github::generate_dummy_repos()
-    } else {
-        let token = args.token.as_ref().unwrap();
+    // Define a struct to hold repository data with source information
+    #[derive(Debug, Clone)]
+    struct RepoData {
+        name: String,
+        url: String,
+        description: String,
+        owner: String,
+        is_fork: bool,
+        is_private: bool,
+        source: formatter::RepoSource,
+    }
 
+    // Get repositories (either real or dummy) and combine them
+    let mut all_repos: Vec<RepoData> = Vec::new();
+    let mut username = String::new();
+
+    if args.use_dummy {
+        // Use dummy data
+        let (dummy_username, dummy_repos) = github::generate_dummy_repos();
+        username = dummy_username;
+
+        // Convert to RepoData with GitHub source
+        all_repos.extend(dummy_repos.into_iter().map(|(name, url, description, owner, is_fork, is_private)| {
+            RepoData {
+                name,
+                url,
+                description,
+                owner,
+                is_fork,
+                is_private,
+                source: formatter::RepoSource::GitHub,
+            }
+        }));
+    } else {
+        // Fetch real repositories
         // Check if we have a valid cache
         let use_cache = !args.force_download;
-        if use_cache {
+
+        if use_cache && !args.force_download {
             if let Some(cache_data) = cache::load_cache() {
                 if !cache_data.is_expired() {
                     println!("Using cached repositories from previous run");
-                    (cache_data.username, cache_data.repositories)
+                    username = cache_data.username;
+
+                    // Convert cached repos to RepoData (assume GitHub for now)
+                    all_repos.extend(cache_data.repositories.into_iter().map(|(name, url, description, owner, is_fork, is_private)| {
+                        RepoData {
+                            name,
+                            url,
+                            description,
+                            owner,
+                            is_fork,
+                            is_private,
+                            source: formatter::RepoSource::GitHub, // Assume GitHub for cached repos
+                        }
+                    }));
                 } else {
+                    // Cache expired, fetch fresh data
                     println!("Cache expired, fetching fresh data...");
-                    let (username, repos) = github::fetch_repos(token).await?;
-                    // Save to cache in the background
-                    let _ = cache::save_cache(&username, &repos);
-                    (username, repos)
+
+                    // Fetch from both services if tokens are provided
+                    if let Some(github_token) = &args.github_token {
+                        let (gh_username, gh_repos) = github::fetch_repos(github_token).await?;
+                        if username.is_empty() {
+                            username = gh_username.clone();
+                        }
+
+                        // Add GitHub repos
+                        all_repos.extend(gh_repos.into_iter().map(|(name, url, description, owner, is_fork, is_private)| {
+                            RepoData {
+                                name,
+                                url,
+                                description,
+                                owner,
+                                is_fork,
+                                is_private,
+                                source: formatter::RepoSource::GitHub,
+                            }
+                        }));
+                    }
+
+                    if let Some(gitlab_token) = &args.gitlab_token {
+                        let (gl_username, gl_repos) = gitlab::fetch_repos(gitlab_token).await?;
+                        if username.is_empty() {
+                            username = gl_username.clone();
+                        }
+
+                        // Add GitLab repos
+                        all_repos.extend(gl_repos.into_iter().map(|(name, url, description, owner, is_fork, is_private)| {
+                            RepoData {
+                                name,
+                                url,
+                                description,
+                                owner,
+                                is_fork,
+                                is_private,
+                                source: formatter::RepoSource::GitLab,
+                            }
+                        }));
+                    }
+
+                    // Save to cache (only GitHub repos for now)
+                    // TODO: Update cache format to include source information
+                    let github_repos: Vec<(String, String, String, String, bool, bool)> = all_repos
+                        .iter()
+                        .filter(|r| matches!(r.source, formatter::RepoSource::GitHub))
+                        .map(|r| (r.name.clone(), r.url.clone(), r.description.clone(), r.owner.clone(), r.is_fork, r.is_private))
+                        .collect();
+
+                    let _ = cache::save_cache(&username, &github_repos);
                 }
             } else {
+                // No cache, fetch fresh data
                 println!("No cache found, fetching repositories...");
-                let (username, repos) = github::fetch_repos(token).await?;
-                // Save to cache
-                let _ = cache::save_cache(&username, &repos);
-                (username, repos)
+
+                // Fetch from both services if tokens are provided
+                if let Some(github_token) = &args.github_token {
+                    let (gh_username, gh_repos) = github::fetch_repos(github_token).await?;
+                    if username.is_empty() {
+                        username = gh_username.clone();
+                    }
+
+                    // Add GitHub repos
+                    all_repos.extend(gh_repos.into_iter().map(|(name, url, description, owner, is_fork, is_private)| {
+                        RepoData {
+                            name,
+                            url,
+                            description,
+                            owner,
+                            is_fork,
+                            is_private,
+                            source: formatter::RepoSource::GitHub,
+                        }
+                    }));
+                }
+
+                if let Some(gitlab_token) = &args.gitlab_token {
+                    let (gl_username, gl_repos) = gitlab::fetch_repos(gitlab_token).await?;
+                    if username.is_empty() {
+                        username = gl_username.clone();
+                    }
+
+                    // Add GitLab repos
+                    all_repos.extend(gl_repos.into_iter().map(|(name, url, description, owner, is_fork, is_private)| {
+                        RepoData {
+                            name,
+                            url,
+                            description,
+                            owner,
+                            is_fork,
+                            is_private,
+                            source: formatter::RepoSource::GitLab,
+                        }
+                    }));
+                }
+
+                // Save to cache (only GitHub repos for now)
+                // TODO: Update cache format to include source information
+                let github_repos: Vec<(String, String, String, String, bool, bool)> = all_repos
+                    .iter()
+                    .filter(|r| matches!(r.source, formatter::RepoSource::GitHub))
+                    .map(|r| (r.name.clone(), r.url.clone(), r.description.clone(), r.owner.clone(), r.is_fork, r.is_private))
+                    .collect();
+
+                let _ = cache::save_cache(&username, &github_repos);
             }
         } else {
+            // Force download
             println!("Force downloading repositories...");
-            let (username, repos) = github::fetch_repos(token).await?;
-            // Save to cache
-            let _ = cache::save_cache(&username, &repos);
-            (username, repos)
+
+            // Fetch from both services if tokens are provided
+            if let Some(github_token) = &args.github_token {
+                let (gh_username, gh_repos) = github::fetch_repos(github_token).await?;
+                if username.is_empty() {
+                    username = gh_username.clone();
+                }
+
+                // Add GitHub repos
+                all_repos.extend(gh_repos.into_iter().map(|(name, url, description, owner, is_fork, is_private)| {
+                    RepoData {
+                        name,
+                        url,
+                        description,
+                        owner,
+                        is_fork,
+                        is_private,
+                        source: formatter::RepoSource::GitHub,
+                    }
+                }));
+            }
+
+            if let Some(gitlab_token) = &args.gitlab_token {
+                let (gl_username, gl_repos) = gitlab::fetch_repos(gitlab_token).await?;
+                if username.is_empty() {
+                    username = gl_username.clone();
+                }
+
+                // Add GitLab repos
+                all_repos.extend(gl_repos.into_iter().map(|(name, url, description, owner, is_fork, is_private)| {
+                    RepoData {
+                        name,
+                        url,
+                        description,
+                        owner,
+                        is_fork,
+                        is_private,
+                        source: formatter::RepoSource::GitLab,
+                    }
+                }));
+            }
+
+            // Save to cache (only GitHub repos for now)
+            // TODO: Update cache format to include source information
+            let github_repos: Vec<(String, String, String, String, bool, bool)> = all_repos
+                .iter()
+                .filter(|r| matches!(r.source, formatter::RepoSource::GitHub))
+                .map(|r| (r.name.clone(), r.url.clone(), r.description.clone(), r.owner.clone(), r.is_fork, r.is_private))
+                .collect();
+
+            let _ = cache::save_cache(&username, &github_repos);
         }
-    };
+    }
+
+    // Print summary of repositories found
+    let github_count = all_repos.iter().filter(|r| matches!(r.source, formatter::RepoSource::GitHub)).count();
+    let gitlab_count = all_repos.iter().filter(|r| matches!(r.source, formatter::RepoSource::GitLab)).count();
+    println!("Found {} repositories: {} from GitHub, {} from GitLab", all_repos.len(), github_count, gitlab_count);
 
     // Create formatted choices for the fuzzy finder
-    let choices: Vec<String> = repos
-        .into_iter()
-        .map(|(name, _url, description, _owner, is_fork, is_private)| {
-            formatter::format_repository(&name, &description, is_fork, is_private)
+    let choices: Vec<String> = all_repos
+        .iter()
+        .map(|repo| {
+            formatter::format_repository(&repo.name, &repo.description, repo.is_fork, repo.is_private, repo.source)
         })
         .collect();
 
@@ -103,7 +296,16 @@ async fn main() -> Result<(), Box<dyn Error>> {
         };
 
         // Extract repository name and URL from selection
-        if let Some((repo_name, _url, browser_url)) = github::extract_repo_info(&selection, &username) {
+        // Determine if this is a GitHub or GitLab repository based on the [GH] or [GL] tag
+        let is_gitlab = selection.contains(" [GL]");
+
+        let repo_info = if is_gitlab {
+            gitlab::extract_repo_info(&selection, &username)
+        } else {
+            github::extract_repo_info(&selection, &username)
+        };
+
+        if let Some((repo_name, _url, browser_url)) = repo_info {
             // Always open in browser
             if let Some(browser_url) = browser_url {
                 println!("\nOpening repository in browser: {}", browser_url);

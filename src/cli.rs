@@ -16,22 +16,31 @@ use clap::{Arg, Command};
 
 pub struct AppArgs {
     pub use_dummy: bool,
-    pub token: Option<String>,
+    pub github_token: Option<String>,
+    pub gitlab_token: Option<String>,
     pub force_download: bool,
 }
 
 pub fn parse_args() -> AppArgs {
-    let matches = Command::new("gh-url-picker")
+    let matches = Command::new("repo-url-picker")
         .version("0.1.0")
         .author("Your Name <you@example.com>")
-        .about("Pick GitHub repos by fuzzy filtering with visual indicators for repository types")
+        .about("Pick GitHub and GitLab repos by fuzzy filtering with visual indicators for repository types")
         .arg(
-            Arg::new("token")
-                .short('t')
-                .long("token")
+            Arg::new("github-token")
+                .short('g')
+                .long("github-token")
                 .value_name("GITHUB_TOKEN")
                 .help("GitHub personal access token")
-                .required_unless_present("dummy"),
+                .conflicts_with("dummy"),
+        )
+        .arg(
+            Arg::new("gitlab-token")
+                .short('l')
+                .long("gitlab-token")
+                .value_name("GITLAB_TOKEN")
+                .help("GitLab personal access token")
+                .conflicts_with("dummy"),
         )
         .arg(
             Arg::new("dummy")
@@ -51,18 +60,34 @@ pub fn parse_args() -> AppArgs {
 
     // Check if dummy mode is enabled
     let use_dummy = matches.get_flag("dummy");
-    let token = if !use_dummy {
-        matches.get_one::<String>("token").cloned()
+
+    // Get GitHub and GitLab tokens
+    let github_token = if !use_dummy {
+        matches.get_one::<String>("github-token").cloned()
     } else {
         None
     };
+
+    let gitlab_token = if !use_dummy {
+        matches.get_one::<String>("gitlab-token").cloned()
+    } else {
+        None
+    };
+
+    // Validate that at least one token is provided if not in dummy mode
+    if !use_dummy && github_token.is_none() && gitlab_token.is_none() {
+        eprintln!("Error: At least one of --github-token or --gitlab-token must be provided");
+        eprintln!("       Alternatively, use --dummy for testing with sample data");
+        std::process::exit(1);
+    }
 
     // Check if force download is enabled
     let force_download = matches.get_flag("force-download");
 
     AppArgs {
         use_dummy,
-        token,
+        github_token,
+        gitlab_token,
         force_download,
     }
 }
