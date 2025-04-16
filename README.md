@@ -2,13 +2,10 @@
 
 # TODO
 
-- escape should quit with exit code 0 always everywhere
-- fix the wrong used escape code in menu.rs, 33[ etc. are always displayed and not interpreted
-- test clipboard.rs
-- always display this at bottom of terminal
---------------------------------------------------
-[5/5] Press Ctrl+C to quit, Enter to select
-- do not display  10 candidates but as many as height allows
+- do not show the ssh, maybe show the repo description instead?
+- remove clipboard.rs and menu.rs and instead always open in github 
+- show entered prompt at bottom after >
+- move [100/100] showing into the line and use a better line character which has no gaps
 
 # LATER
 
