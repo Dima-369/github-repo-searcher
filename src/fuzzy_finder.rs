@@ -12,8 +12,6 @@ use termion::screen::IntoAlternateScreen;
 use termion::style;
 
 use crate::filter;
-use crate::INTERRUPTED;
-use std::sync::atomic::Ordering;
 
 // Custom UI for displaying and filtering repositories
 pub struct FuzzyFinder {
@@ -214,11 +212,6 @@ impl FuzzyFinder {
         let mut keys = stdin.keys();
 
         loop {
-            // Check if interrupted
-            if INTERRUPTED.load(Ordering::SeqCst) {
-                return None;
-            }
-
             // Process key input
             if let Some(Ok(key)) = keys.next() {
                 match key {

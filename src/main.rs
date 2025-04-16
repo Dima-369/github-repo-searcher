@@ -1,8 +1,5 @@
 use std::error::Error;
 use std::process;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Once;
-use std::thread;
 use std::time::Duration;
 
 mod cli;
@@ -10,26 +7,8 @@ mod filter;
 mod fuzzy_finder;
 mod github;
 
-// Global flag to track if Ctrl+C was pressed
-pub static INTERRUPTED: AtomicBool = AtomicBool::new(false);
-static INIT: Once = Once::new();
-
-// Setup signal handler for Ctrl+C
-fn setup_signal_handler() {
-    INIT.call_once(|| {
-        ctrlc::set_handler(move || {
-            INTERRUPTED.store(true, Ordering::SeqCst);
-            println!("\nInterrupted, exiting...");
-            process::exit(0);
-        })
-        .expect("Error setting Ctrl-C handler");
-    });
-}
-
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    // Setup signal handler for Ctrl+C
-    setup_signal_handler();
 
     // Parse command line arguments
     let args = cli::parse_args();
