@@ -1,6 +1,9 @@
 use std::error::Error;
 use std::process;
 use std::time::Duration;
+extern crate libc;
+
+// No platform-specific imports needed with ctrlc crate
 
 mod cache;
 mod cli;
@@ -9,8 +12,21 @@ mod formatter;
 mod fuzzy_finder;
 mod github;
 
+// Set up a Ctrl+C handler that works globally
+fn setup_ctrl_c_handler() {
+    // Use the ctrlc crate which works reliably across platforms
+    ctrlc::set_handler(move || {
+        println!("\nReceived Ctrl+C, exiting...");
+        unsafe {
+            libc::exit(0);
+        }
+    }).expect("Error setting Ctrl+C handler");
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+    // Set up global Ctrl+C handler
+    setup_ctrl_c_handler();
     // Parse command line arguments
     let args = cli::parse_args();
 

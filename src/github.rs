@@ -47,6 +47,9 @@ pub async fn fetch_repos(token: &str) -> octocrab::Result<(String, Vec<Repositor
 
     // Fetch all remaining pages
     while let Some(next_page) = octocrab.get_page(&page.next).await? {
+        // Add a small sleep to allow Ctrl+C to be processed
+        tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+
         page_count += 1;
         page = next_page;
 

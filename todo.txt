@@ -1,0 +1,1 @@
+- fix ctrl-c not working when downloading repos or getting github info, is it because of tokie threads?

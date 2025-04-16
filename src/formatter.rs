@@ -1,4 +1,14 @@
-// Module for formatting repository information with icons and emojis
+//! Module for formatting repository information with icons
+//!
+//! This module provides functions for formatting repository names and descriptions
+//! with visual indicators to help quickly identify their type.
+//!
+//! # Repository Display Format
+//!
+//! ## Status Indicators (at the end of repository name)
+//!
+//! - 🍴 - Fork of another repository
+//! - 🔒 - Private repository
 
 /// Formats a repository name with fork and private status icons
 pub fn format_repo_name(name: &str, is_fork: bool, is_private: bool) -> String {
@@ -8,76 +18,16 @@ pub fn format_repo_name(name: &str, is_fork: bool, is_private: bool) -> String {
     format!("{}{}{}", name, fork_icon, private_icon)
 }
 
-/// Determines appropriate emoji based on repository name and description
-pub fn get_category_emoji(name: &str, description: &str) -> &'static str {
-    let text = format!("{} {}", name, description).to_lowercase();
 
-    // Web/Frontend related
-    if text.contains("web") || text.contains("frontend") || text.contains("html") ||
-       text.contains("css") || text.contains("javascript") || text.contains("react") ||
-       text.contains("vue") || text.contains("angular") {
-        return "🌐";
-    }
 
-    // Backend related
-    if text.contains("backend") || text.contains("server") || text.contains("api") ||
-       text.contains("database") || text.contains("db") {
-        return "🖥️";
-    }
-
-    // Mobile related
-    if text.contains("mobile") || text.contains("android") || text.contains("ios") ||
-       text.contains("app") || text.contains("flutter") || text.contains("swift") {
-        return "📱";
-    }
-
-    // Data science/ML related
-    if text.contains("data") || text.contains("machine learning") || text.contains("ml") ||
-       text.contains("ai") || text.contains("analytics") || text.contains("tensorflow") ||
-       text.contains("pytorch") {
-        return "📊";
-    }
-
-    // Testing - check this first to avoid conflicts with 'script' in Tools
-    if text.contains("test") || text.contains("spec") || text.contains("qa") {
-        return "🧪";
-    }
-
-    // Tools/Utilities
-    if text.contains("tool") || text.contains("util") || text.contains("cli") ||
-       text.contains("command") || text.contains("script") {
-        return "🔧";
-    }
-
-    // Documentation/Learning
-    if text.contains("doc") || text.contains("tutorial") || text.contains("learn") ||
-       text.contains("guide") || text.contains("book") {
-        return "📚";
-    }
-
-    // Game development
-    if text.contains("game") || text.contains("unity") || text.contains("unreal") ||
-       text.contains("godot") {
-        return "🎮";
-    }
-
-    // Default - no specific category identified
-    ""
-}
-
-/// Formats a complete repository display string with name, description, and emojis
+/// Formats a complete repository display string with name and description
 pub fn format_repository(name: &str, description: &str, is_fork: bool, is_private: bool) -> String {
     let formatted_name = format_repo_name(name, is_fork, is_private);
-    let category_emoji = get_category_emoji(name, description);
 
     if description.is_empty() {
-        if !category_emoji.is_empty() {
-            format!("{} {}", formatted_name, category_emoji)
-        } else {
-            formatted_name
-        }
+        formatted_name
     } else {
-        format!("{} ({}) {}", formatted_name, description, category_emoji)
+        format!("{} ({})", formatted_name, description)
     }
 }
 
@@ -100,80 +50,44 @@ mod tests {
         assert_eq!(format_repo_name("private-fork", true, true), "private-fork 🍴 🔒");
     }
 
-    #[test]
-    fn test_get_category_emoji() {
-        // Web/Frontend
-        assert_eq!(get_category_emoji("web-project", "A frontend project"), "🌐");
-        assert_eq!(get_category_emoji("react-app", "UI components"), "🌐");
 
-        // Backend
-        assert_eq!(get_category_emoji("api-server", "REST API"), "🖥️");
-        assert_eq!(get_category_emoji("database-tool", "SQL utility"), "🖥️");
-
-        // Mobile
-        assert_eq!(get_category_emoji("ios-app", "Swift application"), "📱");
-        assert_eq!(get_category_emoji("android-client", "Mobile app"), "📱");
-
-        // Data science
-        assert_eq!(get_category_emoji("data-analysis", "ML project"), "📊");
-        assert_eq!(get_category_emoji("tensorflow-model", "AI experiment"), "📊");
-
-        // Tools
-        assert_eq!(get_category_emoji("cli-tool", "Command line utility"), "🔧");
-        assert_eq!(get_category_emoji("script-collection", "Useful scripts"), "🔧");
-
-        // Documentation
-        assert_eq!(get_category_emoji("docs", "Project documentation"), "📚");
-        assert_eq!(get_category_emoji("tutorial", "Learning materials"), "📚");
-
-        // Games
-        assert_eq!(get_category_emoji("game-engine", "2D game framework"), "🎮");
-        assert_eq!(get_category_emoji("unity-project", "3D game"), "🎮");
-
-        // Testing
-        assert_eq!(get_category_emoji("test-suite", "QA tools"), "🧪");
-        assert_eq!(get_category_emoji("spec-runner", "Testing framework"), "🧪");
-
-        // No category
-        assert_eq!(get_category_emoji("random-project", "Miscellaneous code"), "");
-    }
 
     #[test]
     fn test_format_repository() {
-        // Repository with description and category
+        // Repository with description
         assert_eq!(
             format_repository("web-app", "Frontend application", false, false),
-            "web-app (Frontend application) 🌐"
+            "web-app (Frontend application)"
         );
 
-        // Repository with description, category, and fork status
+        // Repository with description and fork status
         assert_eq!(
             format_repository("forked-api", "Backend service", true, false),
-            "forked-api 🍴 (Backend service) 🖥️"
+            "forked-api 🍴 (Backend service)"
         );
 
-        // Repository with description, category, and private status
+        // Repository with description and private status
         assert_eq!(
             format_repository("mobile-app", "iOS client", false, true),
-            "mobile-app 🔒 (iOS client) 📱"
+            "mobile-app 🔒 (iOS client)"
         );
 
-        // Repository with description, category, fork and private status
+        // Repository with description, fork and private status
         assert_eq!(
             format_repository("game-demo", "Unity project", true, true),
-            "game-demo 🍴 🔒 (Unity project) 🎮"
+            "game-demo 🍴 🔒 (Unity project)"
         );
 
-        // Repository with no description but with category
+        // Repository with no description
         assert_eq!(
             format_repository("test-framework", "", false, false),
-            "test-framework 🧪"
+            "test-framework"
         );
 
-        // Repository with no description and no category
+        // Repository with no description but with status icons
         assert_eq!(
-            format_repository("misc-code", "", false, false),
-            "misc-code"
+            format_repository("private-fork", "", true, true),
+            "private-fork 🍴 🔒"
         );
     }
 }

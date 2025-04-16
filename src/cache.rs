@@ -6,7 +6,7 @@ use std::path::Path;
 use std::time::{Duration, SystemTime};
 
 const CACHE_FILE: &str = ".gh-repo-cache.json";
-const CACHE_EXPIRY: Duration = Duration::from_secs(10 * 60); // 10 minutes
+const CACHE_EXPIRY: Duration = Duration::from_secs(30 * 60); // 30 minutes
 
 #[derive(Serialize, Deserialize)]
 pub struct CacheData {

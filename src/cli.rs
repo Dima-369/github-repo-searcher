@@ -1,3 +1,17 @@
+//! Command-line interface for the GitHub Repository Searcher
+//!
+//! This module handles parsing command-line arguments and provides
+//! the main entry point for the application.
+//!
+//! # Repository Display Format
+//!
+//! Repositories are displayed with visual indicators to help quickly identify their type:
+//!
+//! ## Status Indicators (at the end of repository name)
+//!
+//! - 🍴 - Fork of another repository
+//! - 🔒 - Private repository
+
 use clap::{Arg, Command};
 
 pub struct AppArgs {
@@ -10,7 +24,7 @@ pub fn parse_args() -> AppArgs {
     let matches = Command::new("gh-url-picker")
         .version("0.1.0")
         .author("Your Name <you@example.com>")
-        .about("Pick GitHub repos by fuzzy filtering")
+        .about("Pick GitHub repos by fuzzy filtering with visual indicators for repository types")
         .arg(
             Arg::new("token")
                 .short('t')
@@ -27,9 +41,9 @@ pub fn parse_args() -> AppArgs {
                 .action(clap::ArgAction::SetTrue),
         )
         .arg(
-            Arg::new("force")
+            Arg::new("force-download")
                 .short('f')
-                .long("force")
+                .long("force-download")
                 .help("Force download repositories from GitHub, ignoring cache")
                 .action(clap::ArgAction::SetTrue),
         )
@@ -44,7 +58,7 @@ pub fn parse_args() -> AppArgs {
     };
 
     // Check if force download is enabled
-    let force_download = matches.get_flag("force");
+    let force_download = matches.get_flag("force-download");
 
     AppArgs {
         use_dummy,

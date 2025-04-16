@@ -1,7 +1,7 @@
 use std::io::{self, stdin, stdout, Write};
-use std::process;
 use std::thread;
 use std::time::Duration;
+extern crate libc;
 use termion::clear;
 use termion::color;
 use termion::cursor;
@@ -249,10 +249,16 @@ impl FuzzyFinder {
                         self.move_cursor_down();
                     }
                     Key::Ctrl('c') => {
-                        process::exit(0);
+                        println!("\nExiting...");
+                        unsafe {
+                            libc::exit(0);
+                        }
                     }
                     Key::Esc => {
-                        process::exit(0);
+                        println!("\nExiting...");
+                        unsafe {
+                            libc::exit(0);
+                        }
                     }
                     _ => {}
                 }
