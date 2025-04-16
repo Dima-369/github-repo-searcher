@@ -80,7 +80,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
         Some(selected) => selected,
         None => {
             println!("No selection made");
-            process::exit(0);
+            unsafe {
+                libc::exit(0);
+            }
         }
     };
 
@@ -91,14 +93,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
             println!("\nOpening repository in browser: {}", browser_url);
             println!("Username: {}", username);
             println!("Repository: {}", repo_name);
-
-            // Write URL to a file for debugging
-            use std::fs::File;
-            use std::io::Write;
-            let mut file = File::create("url_debug.txt").unwrap();
-            writeln!(file, "URL: {}", browser_url).unwrap();
-            writeln!(file, "Username: {}", username).unwrap();
-            writeln!(file, "Repository: {}", repo_name).unwrap();
 
             // Open URL in browser
             #[cfg(target_os = "macos")]
