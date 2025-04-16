@@ -1,13 +1,14 @@
-use std::io::{self, Write, stdout, stdin};
+use std::io::{self, stdin, stdout, Write};
+use std::process;
 use std::thread;
 use std::time::Duration;
-use termion::input::TermRead;
+use termion::clear;
+use termion::color;
+use termion::cursor;
 use termion::event::Key;
+use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 use termion::screen::IntoAlternateScreen;
-use termion::cursor;
-use termion::color;
-use termion::clear;
 use termion::style;
 
 use crate::filter;
@@ -47,7 +48,11 @@ impl FuzzyFinder {
 
         // Reset selection if it's out of bounds
         if self.selected_index >= self.filtered_items.len() {
-            self.selected_index = if self.filtered_items.is_empty() { 0 } else { self.filtered_items.len() - 1 };
+            self.selected_index = if self.filtered_items.is_empty() {
+                0
+            } else {
+                self.filtered_items.len() - 1
+            };
         }
 
         // Reset scroll offset if needed
@@ -96,7 +101,10 @@ impl FuzzyFinder {
 
         // Adjust max_display based on available space
         let display_count = std::cmp::min(available_lines, self.filtered_items.len());
-        let end_idx = std::cmp::min(self.scroll_offset + display_count, self.filtered_items.len());
+        let end_idx = std::cmp::min(
+            self.scroll_offset + display_count,
+            self.filtered_items.len(),
+        );
 
         // Display items
         for i in self.scroll_offset..end_idx {
@@ -116,7 +124,14 @@ impl FuzzyFinder {
 
             // Highlight selected item
             if i == self.selected_index {
-                write!(screen, "{}{}> {}{}", color::Fg(color::Green), style::Bold, display_text, style::Reset)?;
+                write!(
+                    screen,
+                    "{}{}> {}{}",
+                    color::Fg(color::Green),
+                    style::Bold,
+                    display_text,
+                    style::Reset
+                )?;
             } else {
                 write!(screen, "  {}", display_text)?;
             }
@@ -172,7 +187,11 @@ impl FuzzyFinder {
             write!(screen, "{}", cursor::Goto(width, height - 1))?;
         } else {
             // Otherwise, position cursor at the current position (after the prompt)
-            write!(screen, "{}", cursor::Goto(self.cursor_pos as u16 + 3, height - 1))?;
+            write!(
+                screen,
+                "{}",
+                cursor::Goto(self.cursor_pos as u16 + 3, height - 1)
+            )?;
         }
 
         screen.flush()?;
@@ -181,8 +200,11 @@ impl FuzzyFinder {
 
     pub fn run(&mut self) -> Option<String> {
         // Set up terminal
-        let mut screen = stdout().into_raw_mode().unwrap()
-            .into_alternate_screen().unwrap();
+        let mut screen = stdout()
+            .into_raw_mode()
+            .unwrap()
+            .into_alternate_screen()
+            .unwrap();
 
         // Initial render
         self.render(&mut screen).unwrap();
@@ -205,13 +227,13 @@ impl FuzzyFinder {
                         if !self.filtered_items.is_empty() {
                             return Some(self.filtered_items[self.selected_index].clone());
                         }
-                    },
+                    }
                     Key::Char(c) => {
                         // Add character to query
                         self.query.push(c);
                         self.cursor_pos += 1;
                         self.update_filter();
-                    },
+                    }
                     Key::Backspace => {
                         // Remove character from query
                         if !self.query.is_empty() && self.cursor_pos > 0 {
@@ -219,20 +241,19 @@ impl FuzzyFinder {
                             self.cursor_pos -= 1;
                             self.update_filter();
                         }
-                    },
+                    }
                     Key::Up => {
                         self.move_cursor_up();
-                    },
+                    }
                     Key::Down => {
                         self.move_cursor_down();
-                    },
+                    }
                     Key::Ctrl('c') => {
                         return None;
-                    },
+                    }
                     Key::Esc => {
-                        // Exit with code 0 on Escape
-                        unsafe { libc::_exit(0); }
-                    },
+                        process::exit(0);
+                    }
                     _ => {}
                 }
 

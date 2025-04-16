@@ -1,12 +1,12 @@
 use std::error::Error;
-use std::thread;
-use std::time::Duration;
-extern crate libc;
+use std::process;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Once;
+use std::thread;
+use std::time::Duration;
 
-mod filter;
 mod cli;
+mod filter;
 mod fuzzy_finder;
 mod github;
 
@@ -20,8 +20,9 @@ fn setup_signal_handler() {
         ctrlc::set_handler(move || {
             INTERRUPTED.store(true, Ordering::SeqCst);
             println!("\nInterrupted, exiting...");
-            unsafe { libc::_exit(0); }
-        }).expect("Error setting Ctrl-C handler");
+            process::exit(0);
+        })
+        .expect("Error setting Ctrl-C handler");
     });
 }
 
@@ -53,12 +54,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
         Some(selected) => selected,
         None => {
             println!("No selection made");
-            unsafe { libc::_exit(0); }
+            process::exit(0);
         }
     };
 
     // Extract repository name and URL from selection
-    if let Some((repo_name, _url, browser_url)) = github::extract_repo_info(&selection, &args.username) {
+    if let Some((repo_name, _url, browser_url)) =
+        github::extract_repo_info(&selection, &args.username)
+    {
         // Always open in browser
         if let Some(browser_url) = browser_url {
             println!("\nOpening repository in browser: {}", browser_url);
@@ -75,31 +78,27 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
             // Open the URL in the default browser
             let open_command = if cfg!(target_os = "macos") {
-                std::process::Command::new("open")
-                    .arg(&browser_url)
-                    .output()
+                process::Command::new("open").arg(&browser_url).output()
             } else if cfg!(target_os = "linux") {
-                std::process::Command::new("xdg-open")
-                    .arg(&browser_url)
-                    .output()
+                process::Command::new("xdg-open").arg(&browser_url).output()
             } else if cfg!(target_os = "windows") {
-                std::process::Command::new("cmd")
+                process::Command::new("cmd")
                     .args(["/c", "start", &browser_url])
                     .output()
             } else {
                 println!("Opening browser not supported on this platform.");
                 println!("URL: {}", browser_url);
                 // Just return a dummy successful result
-                Ok(std::process::Command::new("true").output().unwrap())
+                Ok(process::Command::new("true").output().unwrap())
             };
 
             match open_command {
                 Ok(_) => println!("Browser opened successfully"),
-                Err(e) => eprintln!("Failed to open browser: {}", e)
+                Err(e) => eprintln!("Failed to open browser: {}", e),
             }
 
             // Small delay to ensure operation completes
-            thread::sleep(Duration::from_millis(100));
+            tokio::time::sleep(Duration::from_millis(100)).await;
         } else {
             println!("No browser URL available for repository: {}", repo_name);
         }
