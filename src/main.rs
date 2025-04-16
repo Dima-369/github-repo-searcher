@@ -1,6 +1,5 @@
 use std::error::Error;
 use std::process;
-use std::time::Duration;
 
 mod browser;
 mod cache;
@@ -17,7 +16,7 @@ mod terminal;
 async fn main() -> Result<(), Box<dyn Error>> {
     // Set up global Ctrl+C handler
     terminal::setup_ctrl_c_handler();
-    
+
     // Parse command line arguments
     let args = cli::parse_args();
 
@@ -32,22 +31,49 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // Load repositories based on the mode (dummy or real)
     if args.use_dummy {
         // Use dummy data for testing
-        repository::load_dummy_repositories(&mut all_repos, &mut github_username, &mut gitlab_username);
+        repository::load_dummy_repositories(
+            &mut all_repos,
+            &mut github_username,
+            &mut gitlab_username,
+        );
     } else {
         // Load real repositories (from cache or API)
-        repository::load_real_repositories(&args, &mut all_repos, &mut github_username, &mut gitlab_username).await?;
+        repository::load_real_repositories(
+            &args,
+            &mut all_repos,
+            &mut github_username,
+            &mut gitlab_username,
+        )
+        .await?;
     }
 
     // Print summary of repositories found
-    let github_count = all_repos.iter().filter(|r| matches!(r.source, formatter::RepoSource::GitHub)).count();
-    let gitlab_count = all_repos.iter().filter(|r| matches!(r.source, formatter::RepoSource::GitLab)).count();
-    println!("Found {} repositories: {} from GitHub, {} from GitLab", all_repos.len(), github_count, gitlab_count);
+    let github_count = all_repos
+        .iter()
+        .filter(|r| matches!(r.source, formatter::RepoSource::GitHub))
+        .count();
+    let gitlab_count = all_repos
+        .iter()
+        .filter(|r| matches!(r.source, formatter::RepoSource::GitLab))
+        .count();
+    println!(
+        "Found {} repositories: {} from GitHub, {} from GitLab",
+        all_repos.len(),
+        github_count,
+        gitlab_count
+    );
 
     // Create formatted choices for the fuzzy finder
     let choices: Vec<String> = all_repos
         .iter()
         .map(|repo| {
-            formatter::format_repository(&repo.name, &repo.description, repo.is_fork, repo.is_private, repo.source)
+            formatter::format_repository(
+                &repo.name,
+                &repo.description,
+                repo.is_fork,
+                repo.is_private,
+                repo.source,
+            )
         })
         .collect();
 
@@ -66,13 +92,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
         };
 
         // Process the selected repository
-        if let Err(e) = repository::process_repository_selection(&selection, &github_username, &gitlab_username).await {
+        if let Err(e) =
+            repository::process_repository_selection(&selection, &github_username, &gitlab_username)
+                .await
+        {
             eprintln!("Error processing repository: {}", e);
         }
     }
-    
+
     // The loop above never exits normally, only through Ctrl+C or Esc
     // which call process::exit(0), so this is unreachable
-    #[allow(unreachable_code)]
-    Ok(())
 }
