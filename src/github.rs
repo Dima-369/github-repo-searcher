@@ -8,12 +8,12 @@ pub async fn fetch_repos(token: &str) -> octocrab::Result<(String, Vec<Repositor
     std::io::stdout().flush().unwrap();
 
     let octocrab = Octocrab::builder().personal_token(token.to_string()).build()?;
-
+    
     // Get authenticated user information
     let user = octocrab.current().user().await?;
     let username = user.login;
-
-    println!("{}\u{2713}", "\r".repeat(50)); // Clear line and show checkmark
+    
+    println!("✓"); // Show checkmark on its own line
     print!("Fetching repositories for {}... ", username);
     std::io::stdout().flush().unwrap();
 
@@ -39,7 +39,7 @@ pub async fn fetch_repos(token: &str) -> octocrab::Result<(String, Vec<Repositor
             ))
     );
 
-    print!("{}\u{2713}", "\r".repeat(50)); // Clear line and show checkmark
+    print!("\r                                                  "); // Clear the line
     print!("\rFetched page {} ({} repos so far)... ", page_count, all_repos.len());
     std::io::stdout().flush().unwrap();
 
@@ -58,13 +58,13 @@ pub async fn fetch_repos(token: &str) -> octocrab::Result<(String, Vec<Repositor
                     username.clone()
                 ))
         );
-        print!("{}\u{2713}", "\r".repeat(50)); // Clear line and show checkmark
+        print!("\r                                                  "); // Clear the line
         print!("\rFetched page {} ({} repos so far)... ", page_count, all_repos.len());
         std::io::stdout().flush().unwrap();
     }
 
-    println!("{}\u{2713}", "\r".repeat(50)); // Clear line and show checkmark
-    println!("\rFetched {} repositories from {} pages", all_repos.len(), page_count);
+    println!("✓"); // Show checkmark on its own line
+    println!("Fetched {} repositories from {} pages", all_repos.len(), page_count);
     Ok((username, all_repos))
 }
 
