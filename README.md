@@ -68,4 +68,4 @@ api-client [GL] (A GitLab API client)
 
 ## Future Plans
 
-- Improve caching to store repositories from multiple sources
+- fix that cursor is not shown and does not respect arrow left and right in text input

@@ -10,8 +10,10 @@
 //! - (fork) or (fork: description) - Fork of another repository
 //! - 🔒 - Private repository
 
+use serde::{Deserialize, Serialize};
+
 /// Repository source (GitHub or GitLab)
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum RepoSource {
     GitHub,
     GitLab,
