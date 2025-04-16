@@ -375,6 +375,8 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "octocrab",
+ "serde",
+ "serde_json",
  "termion",
  "tokio",
 ]

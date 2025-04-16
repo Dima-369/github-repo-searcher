@@ -2,6 +2,7 @@ use std::error::Error;
 use std::process;
 use std::time::Duration;
 
+mod cache;
 mod cli;
 mod filter;
 mod fuzzy_finder;
@@ -17,7 +18,35 @@ async fn main() -> Result<(), Box<dyn Error>> {
         github::generate_dummy_repos()
     } else {
         let token = args.token.as_ref().unwrap();
-        github::fetch_repos(token).await?
+
+        // Check if we have a valid cache
+        let use_cache = !args.force_download;
+        if use_cache {
+            if let Some(cache_data) = cache::load_cache() {
+                if !cache_data.is_expired() {
+                    println!("Using cached repositories from previous run");
+                    (cache_data.username, cache_data.repositories)
+                } else {
+                    println!("Cache expired, fetching fresh data...");
+                    let (username, repos) = github::fetch_repos(token).await?;
+                    // Save to cache in the background
+                    let _ = cache::save_cache(&username, &repos);
+                    (username, repos)
+                }
+            } else {
+                println!("No cache found, fetching repositories...");
+                let (username, repos) = github::fetch_repos(token).await?;
+                // Save to cache
+                let _ = cache::save_cache(&username, &repos);
+                (username, repos)
+            }
+        } else {
+            println!("Force downloading repositories...");
+            let (username, repos) = github::fetch_repos(token).await?;
+            // Save to cache
+            let _ = cache::save_cache(&username, &repos);
+            (username, repos)
+        }
     };
 
     // Create formatted choices for the fuzzy finder

@@ -1,5 +1,8 @@
 .aider*
 
+# Cache files
+.gh-repo-cache.json
+url_debug.txt
 
 # Added by cargo
 

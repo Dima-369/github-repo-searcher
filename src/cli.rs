@@ -3,6 +3,7 @@ use clap::{Arg, Command};
 pub struct AppArgs {
     pub use_dummy: bool,
     pub token: Option<String>,
+    pub force_download: bool,
 }
 
 pub fn parse_args() -> AppArgs {
@@ -25,6 +26,13 @@ pub fn parse_args() -> AppArgs {
                 .help("Use 100 dummy repositories for testing the UI")
                 .action(clap::ArgAction::SetTrue),
         )
+        .arg(
+            Arg::new("force")
+                .short('f')
+                .long("force")
+                .help("Force download repositories from GitHub, ignoring cache")
+                .action(clap::ArgAction::SetTrue),
+        )
         .get_matches();
 
     // Check if dummy mode is enabled
@@ -35,8 +43,12 @@ pub fn parse_args() -> AppArgs {
         None
     };
 
+    // Check if force download is enabled
+    let force_download = matches.get_flag("force");
+
     AppArgs {
         use_dummy,
         token,
+        force_download,
     }
 }
