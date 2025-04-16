@@ -12,7 +12,7 @@ fn cleanup_terminal() {
     std::io::stdout().flush().unwrap();
 
     // Reset terminal attributes to ensure proper cleanup
-    if let Ok(mut term) = termion::get_tty() {
+    if let Ok(_) = termion::get_tty() {
         let _ = termion::async_stdin().keys().next(); // Consume any pending input
         let _ = termion::terminal_size(); // Force terminal refresh
     }
@@ -156,6 +156,4 @@ async fn main() -> Result<(), Box<dyn Error>> {
     }
     // The loop above never exits normally, only through Ctrl+C or Esc
     // which call process::exit(0), so this is unreachable
-    #[allow(unreachable_code)]
-    Ok(())
 }

@@ -110,7 +110,7 @@ impl FuzzyFinder {
 
             // Truncate item text if it's too long
             let display_text = if item.chars().count() > available_width {
-                // Truncate and add ellipsis, being careful with multi-byte characters like emojis
+                // Truncate and add ellipsis, being careful with multibyte characters like emojis
                 let mut truncated = String::new();
                 let mut char_count = 0;
 
@@ -212,7 +212,7 @@ impl FuzzyFinder {
             .unwrap();
 
         // Hide cursor and perform initial render
-        write!(screen, "{}", termion::cursor::Hide).unwrap();
+        write!(screen, "{}", cursor::Hide).unwrap();
         screen.flush().unwrap();
         self.render(&mut screen).unwrap();
 
@@ -231,7 +231,7 @@ impl FuzzyFinder {
                             let selected = self.filtered_items[self.selected_index].clone();
 
                             // Properly restore terminal state before returning
-                            write!(screen, "{}{}", termion::screen::ToMainScreen, termion::cursor::Show).unwrap();
+                            write!(screen, "{}{}", termion::screen::ToMainScreen, cursor::Show).unwrap();
                             screen.flush().unwrap();
                             drop(screen); // Explicitly drop the screen to ensure it's properly cleaned up
 
@@ -261,7 +261,7 @@ impl FuzzyFinder {
                     }
                     Key::Ctrl('c') => {
                         // Properly restore terminal state before exiting
-                        write!(screen, "{}{}", termion::screen::ToMainScreen, termion::cursor::Show).unwrap();
+                        write!(screen, "{}{}", termion::screen::ToMainScreen, cursor::Show).unwrap();
                         screen.flush().unwrap();
                         drop(screen); // Explicitly drop the screen to ensure it's properly cleaned up
                         println!("\nExiting...");
@@ -269,7 +269,7 @@ impl FuzzyFinder {
                     }
                     Key::Esc => {
                         // Properly restore terminal state before exiting
-                        write!(screen, "{}{}", termion::screen::ToMainScreen, termion::cursor::Show).unwrap();
+                        write!(screen, "{}{}", termion::screen::ToMainScreen, cursor::Show).unwrap();
                         screen.flush().unwrap();
                         drop(screen); // Explicitly drop the screen to ensure it's properly cleaned up
                         println!("\nExiting...");
