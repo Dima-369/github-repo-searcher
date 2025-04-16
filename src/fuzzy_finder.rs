@@ -102,11 +102,23 @@ impl FuzzyFinder {
         for i in self.scroll_offset..end_idx {
             let item = &self.filtered_items[i];
 
+            // Calculate available width for text (accounting for the prefix)
+            let prefix_len = 2; // Both "> " and "  " are 2 characters
+            let available_width = width as usize - prefix_len;
+
+            // Truncate item text if it's too long
+            let display_text = if item.len() > available_width {
+                // Truncate and add ellipsis
+                format!("{:.width$}…", item, width = available_width - 1)
+            } else {
+                item.clone()
+            };
+
             // Highlight selected item
             if i == self.selected_index {
-                write!(screen, "{}{}> {}{}", color::Fg(color::Green), style::Bold, item, style::Reset)?;
+                write!(screen, "{}{}> {}{}", color::Fg(color::Green), style::Bold, display_text, style::Reset)?;
             } else {
-                write!(screen, "  {}", item)?;
+                write!(screen, "  {}", display_text)?;
             }
 
             write!(screen, "\r\n")?;
@@ -143,11 +155,25 @@ impl FuzzyFinder {
 
         // Display the input text on a new line
         if !self.query.is_empty() {
-            write!(screen, "{}", self.query)?;
+            // Truncate query if it's too long for the terminal width
+            let display_query = if self.query.len() > width as usize {
+                // Show the last part of the query that fits in the terminal
+                let start_pos = self.query.len() - width as usize + 1;
+                format!("…{}", &self.query[start_pos..])
+            } else {
+                self.query.clone()
+            };
+            write!(screen, "{}", display_query)?;
         }
 
         // Position cursor at the right position in the input line
-        write!(screen, "{}", cursor::Goto(self.cursor_pos as u16 + 1, height))?;
+        if self.query.len() > width as usize {
+            // If text is truncated, position cursor at the end of visible text
+            write!(screen, "{}", cursor::Goto(width, height))?;
+        } else {
+            // Otherwise, position cursor at the current position
+            write!(screen, "{}", cursor::Goto(self.cursor_pos as u16 + 1, height))?;
+        }
 
         screen.flush()?;
         Ok(())

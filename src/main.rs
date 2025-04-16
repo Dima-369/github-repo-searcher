@@ -58,10 +58,20 @@ async fn main() -> Result<(), Box<dyn Error>> {
     };
 
     // Extract repository name and URL from selection
-    if let Some((repo_name, _url, browser_url)) = github::extract_repo_info(&selection) {
+    if let Some((repo_name, _url, browser_url)) = github::extract_repo_info(&selection, &args.username) {
         // Always open in browser
         if let Some(browser_url) = browser_url {
-            println!("Opening repository in browser: {}", browser_url);
+            println!("\nOpening repository in browser: {}", browser_url);
+            println!("Username: {}", args.username);
+            println!("Repository: {}", repo_name);
+
+            // Write URL to a file for debugging
+            use std::fs::File;
+            use std::io::Write;
+            let mut file = File::create("url_debug.txt").unwrap();
+            writeln!(file, "URL: {}", browser_url).unwrap();
+            writeln!(file, "Username: {}", args.username).unwrap();
+            writeln!(file, "Repository: {}", repo_name).unwrap();
 
             // Open the URL in the default browser
             let open_command = if cfg!(target_os = "macos") {

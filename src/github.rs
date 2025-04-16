@@ -64,9 +64,9 @@ pub fn generate_dummy_repos() -> Vec<Repository> {
     let mut dummy_repos = Vec::with_capacity(100);
 
     // Add some special repositories that are easy to find
-    dummy_repos.push(("awesome-project".to_string(), "git@github.com:user/awesome-project.git".to_string(), "An awesome project with lots of features".to_string()));
-    dummy_repos.push(("test-repository".to_string(), "git@github.com:user/test-repository.git".to_string(), "Repository for testing purposes".to_string()));
-    dummy_repos.push(("sample-code".to_string(), "git@github.com:user/sample-code.git".to_string(), "Sample code examples".to_string()));
+    dummy_repos.push(("clj-basic-image-cache-server".to_string(), "git@github.com:user/clj-basic-image-cache-server.git".to_string(), "A basic image cache server written in Clojure".to_string()));
+    dummy_repos.push(("rust-web-server".to_string(), "git@github.com:user/rust-web-server.git".to_string(), "A web server written in Rust".to_string()));
+    dummy_repos.push(("go-microservices".to_string(), "git@github.com:user/go-microservices.git".to_string(), "Microservices examples in Go".to_string()));
 
     // Add repositories by category
     let categories = ["api", "web", "mobile", "backend", "frontend", "database", "utils", "tools", "docs", "test"];
@@ -82,16 +82,16 @@ pub fn generate_dummy_repos() -> Vec<Repository> {
     dummy_repos
 }
 
-pub fn extract_repo_info(selection: &str) -> Option<(String, String, Option<String>)> {
+pub fn extract_repo_info(selection: &str, username: &str) -> Option<(String, String, Option<String>)> {
     // Extract repository name and description from selection
     if let Some((repo_name, description_part)) = selection.split_once(" (") {
         let _description = description_part.trim_end_matches(")"); // Prefix with underscore to indicate intentional non-use
 
-        // Construct a URL based on the repository name
-        let url = format!("git@github.com:user/{}.git", repo_name);
+        // Construct a URL based on the repository name and username
+        let url = format!("git@github.com:{}/{}.git", username, repo_name);
 
         // Extract GitHub repo path for browser URL
-        let browser_url = Some(format!("https://github.com/user/{}", repo_name));
+        let browser_url = Some(format!("https://github.com/{}/{}", username, repo_name));
 
         Some((repo_name.to_string(), url, browser_url))
     } else {
