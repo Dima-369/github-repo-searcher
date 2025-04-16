@@ -140,7 +140,7 @@ impl FuzzyFinder {
         }
 
         // Position cursor at the bottom of the screen for status line
-        write!(screen, "{}", cursor::Goto(1, height - 2))?;
+        write!(screen, "{}", cursor::Goto(1, height - 1))?;
 
         // Create the status text with count
         let count_text = format!("{}/{}", self.filtered_items.len(), self.items.len());
@@ -148,7 +148,7 @@ impl FuzzyFinder {
         // Display status line at the bottom (format: "12/12 ───────────────")
         write!(
             screen,
-            "{}{} {}{}\r\n",
+            "{}{} {}{}",
             color::Fg(color::Yellow),
             count_text,
             color::Fg(color::Blue),
@@ -157,7 +157,7 @@ impl FuzzyFinder {
         write!(screen, "{}", style::Reset)?;
 
         // Display prompt at the bottom with input text on the same line
-        write!(screen, "{}>{} ", color::Fg(color::Blue), style::Reset)?;
+        write!(screen, "\r\n{}>{} ", color::Fg(color::Blue), style::Reset)?;
 
         // Display the input text on the same line as the prompt
         if !self.query.is_empty() {
@@ -178,13 +178,13 @@ impl FuzzyFinder {
         let available_width = width as usize - 2; // Account for '>' and space
         if self.query.len() > available_width {
             // If text is truncated, position cursor at the end of visible text
-            write!(screen, "{}", cursor::Goto(width, height - 1))?;
+            write!(screen, "{}", cursor::Goto(width, height))?;
         } else {
             // Otherwise, position cursor at the current position (after the prompt)
             write!(
                 screen,
                 "{}",
-                cursor::Goto(self.cursor_pos as u16 + 3, height - 1)
+                cursor::Goto(self.cursor_pos as u16 + 3, height)
             )?;
         }
 
