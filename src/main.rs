@@ -1,7 +1,8 @@
 use std::error::Error;
+use std::io::Write;
 use std::process;
 use std::time::Duration;
-extern crate libc;
+extern crate termion;
 
 // No platform-specific imports needed with ctrlc crate
 
@@ -16,10 +17,12 @@ mod github;
 fn setup_ctrl_c_handler() {
     // Use the ctrlc crate which works reliably across platforms
     ctrlc::set_handler(move || {
-        println!("\nReceived Ctrl+C, exiting...");
-        unsafe {
-            libc::exit(0);
-        }
+        // Ensure terminal is in a clean state before exiting
+        print!("{}{}\nReceived Ctrl+C, exiting...",
+               termion::screen::ToMainScreen,
+               termion::cursor::Show);
+        std::io::stdout().flush().unwrap();
+        process::exit(0);
     }).expect("Error setting Ctrl+C handler");
 }
 
@@ -83,9 +86,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             Some(selected) => selected,
             None => {
                 println!("No selection made");
-                unsafe {
-                    libc::exit(0);
-                }
+                process::exit(0);
             }
         };
 

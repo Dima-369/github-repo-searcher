@@ -1,7 +1,7 @@
 use std::io::{self, stdin, stdout, Write};
+use std::process;
 use std::thread;
 use std::time::Duration;
-extern crate libc;
 use termion::clear;
 use termion::color;
 use termion::cursor;
@@ -211,7 +211,9 @@ impl FuzzyFinder {
             .into_alternate_screen()
             .unwrap();
 
-        // Initial render
+        // Hide cursor and perform initial render
+        write!(screen, "{}", termion::cursor::Hide).unwrap();
+        screen.flush().unwrap();
         self.render(&mut screen).unwrap();
 
         // Process input
@@ -225,8 +227,15 @@ impl FuzzyFinder {
                     Key::Char('\n') | Key::Char('\r') => {
                         // Return selected item but don't exit the program
                         if !self.filtered_items.is_empty() {
+                            // Store the selected item
+                            let selected = self.filtered_items[self.selected_index].clone();
+
+                            // Properly restore terminal state before returning
+                            write!(screen, "{}", termion::cursor::Show).unwrap();
+                            screen.flush().unwrap();
+
                             // Return the selected item to be processed
-                            return Some(self.filtered_items[self.selected_index].clone());
+                            return Some(selected);
                         }
                     }
                     Key::Char(c) => {
@@ -250,16 +259,18 @@ impl FuzzyFinder {
                         self.move_cursor_down();
                     }
                     Key::Ctrl('c') => {
+                        // Properly restore terminal state before exiting
+                        write!(screen, "{}", termion::cursor::Show).unwrap();
+                        screen.flush().unwrap();
                         println!("\nExiting...");
-                        unsafe {
-                            libc::exit(0);
-                        }
+                        process::exit(0);
                     }
                     Key::Esc => {
+                        // Properly restore terminal state before exiting
+                        write!(screen, "{}", termion::cursor::Show).unwrap();
+                        screen.flush().unwrap();
                         println!("\nExiting...");
-                        unsafe {
-                            libc::exit(0);
-                        }
+                        process::exit(0);
                     }
                     _ => {}
                 }
