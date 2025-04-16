@@ -65,7 +65,3 @@ api-client [GL] (A GitLab API client)
 ## Bugs
 
 - `Ctrl-C` does not work when downloading repository info
-
-## Future Plans
-
-- refactor main.rs - especially browser opening
