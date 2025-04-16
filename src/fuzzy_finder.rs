@@ -225,8 +225,8 @@ impl FuzzyFinder {
             .into_alternate_screen()
             .unwrap();
 
-        // Hide cursor and perform initial render
-        write!(screen, "{}", cursor::Hide).unwrap();
+        // Show cursor and perform initial render
+        write!(screen, "{}", cursor::Show).unwrap();
         screen.flush().unwrap();
         self.render(&mut screen).unwrap();
 
@@ -253,15 +253,15 @@ impl FuzzyFinder {
                         }
                     }
                     Key::Char(c) => {
-                        // Add character to query
-                        self.query.push(c);
+                        // Add character to query at cursor position
+                        self.query.insert(self.cursor_pos, c);
                         self.cursor_pos += 1;
                         self.update_filter();
                     }
                     Key::Backspace => {
-                        // Remove character from query
+                        // Remove character before cursor position
                         if !self.query.is_empty() && self.cursor_pos > 0 {
-                            self.query.pop();
+                            self.query.remove(self.cursor_pos - 1);
                             self.cursor_pos -= 1;
                             self.update_filter();
                         }
@@ -271,6 +271,33 @@ impl FuzzyFinder {
                     }
                     Key::Down => {
                         self.move_cursor_down();
+                    }
+                    Key::Left => {
+                        // Move cursor left if possible
+                        if self.cursor_pos > 0 {
+                            self.cursor_pos -= 1;
+                        }
+                    }
+                    Key::Right => {
+                        // Move cursor right if possible
+                        if self.cursor_pos < self.query.len() {
+                            self.cursor_pos += 1;
+                        }
+                    }
+                    Key::Delete => {
+                        // Remove character at cursor position
+                        if !self.query.is_empty() && self.cursor_pos < self.query.len() {
+                            self.query.remove(self.cursor_pos);
+                            self.update_filter();
+                        }
+                    }
+                    Key::Home => {
+                        // Move cursor to the beginning of the query
+                        self.cursor_pos = 0;
+                    }
+                    Key::End => {
+                        // Move cursor to the end of the query
+                        self.cursor_pos = self.query.len();
                     }
                     Key::Ctrl('c') => {
                         Self::exit_program(&mut screen, "\nExiting...");
