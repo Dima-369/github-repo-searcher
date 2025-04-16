@@ -32,7 +32,7 @@ pub fn parse_args() -> AppArgs {
                 .long("username")
                 .value_name("GITHUB_USERNAME")
                 .help("GitHub username")
-                .default_value("user")
+                .default_value("dima-369")
         )
         .get_matches();
 
@@ -47,7 +47,7 @@ pub fn parse_args() -> AppArgs {
     // Get the GitHub username
     let username = matches.get_one::<String>("username")
         .cloned()
-        .unwrap_or_else(|| "user".to_string());
+        .unwrap_or_else(|| "dima-369".to_string());
 
     AppArgs {
         use_dummy,

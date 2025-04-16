@@ -64,9 +64,9 @@ pub fn generate_dummy_repos() -> Vec<Repository> {
     let mut dummy_repos = Vec::with_capacity(100);
 
     // Add some special repositories that are easy to find
-    dummy_repos.push(("clj-basic-image-cache-server".to_string(), "git@github.com:user/clj-basic-image-cache-server.git".to_string(), "A basic image cache server written in Clojure".to_string()));
-    dummy_repos.push(("rust-web-server".to_string(), "git@github.com:user/rust-web-server.git".to_string(), "A web server written in Rust".to_string()));
-    dummy_repos.push(("go-microservices".to_string(), "git@github.com:user/go-microservices.git".to_string(), "Microservices examples in Go".to_string()));
+    dummy_repos.push(("clj-basic-image-cache-server".to_string(), "git@github.com:dima-369/clj-basic-image-cache-server.git".to_string(), "A basic image cache server written in Clojure".to_string()));
+    dummy_repos.push(("rust-web-server".to_string(), "git@github.com:dima-369/rust-web-server.git".to_string(), "A web server written in Rust".to_string()));
+    dummy_repos.push(("go-microservices".to_string(), "git@github.com:dima-369/go-microservices.git".to_string(), "Microservices examples in Go".to_string()));
 
     // Add repositories by category
     let categories = ["api", "web", "mobile", "backend", "frontend", "database", "utils", "tools", "docs", "test"];
@@ -74,7 +74,7 @@ pub fn generate_dummy_repos() -> Vec<Repository> {
     for i in 1..=97 {
         let category = categories[i % categories.len()];
         let name = format!("{}-project-{}", category, i);
-        let url = format!("git@github.com:user/{}.git", name);
+        let url = format!("git@github.com:dima-369/{}.git", name);
         let description = format!("A {} project for {}", category, if i % 2 == 0 { "development" } else { "production" });
         dummy_repos.push((name, url, description));
     }

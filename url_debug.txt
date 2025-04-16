@@ -1,3 +1,3 @@
-URL: https://github.com/user/mobile-project-52
-Username: user
-Repository: mobile-project-52
+URL: https://github.com/dima-369/ai-agent-rust
+Username: dima-369
+Repository: ai-agent-rust
