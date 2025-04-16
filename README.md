@@ -69,4 +69,3 @@ api-client [GL] (A GitLab API client)
 ## Future Plans
 
 - refactor main.rs - especially browser opening
-- fix wrong gitlab urls
