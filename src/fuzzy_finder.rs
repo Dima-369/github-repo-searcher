@@ -91,8 +91,8 @@ impl FuzzyFinder {
         // Clear screen
         write!(screen, "{}{}", clear::All, cursor::Goto(1, 1))?;
 
-        // Calculate available space for items (accounting for prompt, input, and status lines)
-        let available_lines = height as usize - 4; // Prompt line + input line + status line + separator line
+        // Calculate available space for items (accounting for prompt and status lines)
+        let available_lines = height as usize - 3; // Prompt line (with input) + status line + separator line
 
         // Adjust max_display based on available space
         let display_count = std::cmp::min(available_lines, self.filtered_items.len());
@@ -125,13 +125,13 @@ impl FuzzyFinder {
         }
 
         // Fill any remaining lines with empty space
-        let empty_lines = height as usize - 4 - (end_idx - self.scroll_offset);
+        let empty_lines = height as usize - 3 - (end_idx - self.scroll_offset);
         for _ in 0..empty_lines {
             write!(screen, "\r\n")?;
         }
 
         // Position cursor at the bottom of the screen for status line
-        write!(screen, "{}", cursor::Goto(1, height - 3))?;
+        write!(screen, "{}", cursor::Goto(1, height - 2))?;
 
         // Create the status text with count
         let count_text = format!("{}/{}", self.filtered_items.len(), self.items.len());
@@ -147,18 +147,17 @@ impl FuzzyFinder {
         )?;
         write!(screen, "{}", style::Reset)?;
 
-        // Display prompt at the bottom
-        write!(screen, "{}>{}", color::Fg(color::Blue), style::Reset)?;
+        // Display prompt at the bottom with input text on the same line
+        write!(screen, "{}>{} ", color::Fg(color::Blue), style::Reset)?;
 
-        // Move to the next line for input text
-        write!(screen, "\r\n")?;
-
-        // Display the input text on a new line
+        // Display the input text on the same line as the prompt
         if !self.query.is_empty() {
             // Truncate query if it's too long for the terminal width
-            let display_query = if self.query.len() > width as usize {
+            // Account for the prompt (2 characters: '>' and space)
+            let available_width = width as usize - 2;
+            let display_query = if self.query.len() > available_width {
                 // Show the last part of the query that fits in the terminal
-                let start_pos = self.query.len() - width as usize + 1;
+                let start_pos = self.query.len() - available_width + 1;
                 format!("…{}", &self.query[start_pos..])
             } else {
                 self.query.clone()
@@ -167,12 +166,13 @@ impl FuzzyFinder {
         }
 
         // Position cursor at the right position in the input line
-        if self.query.len() > width as usize {
+        let available_width = width as usize - 2; // Account for '>' and space
+        if self.query.len() > available_width {
             // If text is truncated, position cursor at the end of visible text
-            write!(screen, "{}", cursor::Goto(width, height))?;
+            write!(screen, "{}", cursor::Goto(width, height - 1))?;
         } else {
-            // Otherwise, position cursor at the current position
-            write!(screen, "{}", cursor::Goto(self.cursor_pos as u16 + 1, height))?;
+            // Otherwise, position cursor at the current position (after the prompt)
+            write!(screen, "{}", cursor::Goto(self.cursor_pos as u16 + 3, height - 1))?;
         }
 
         screen.flush()?;
