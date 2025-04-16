@@ -1,7 +1,7 @@
 use octocrab::Octocrab;
 use std::io::Write;
 
-pub type Repository = (String, String); // (name, ssh_url)
+pub type Repository = (String, String, String); // (name, ssh_url, description)
 
 pub async fn fetch_repos(token: &str) -> octocrab::Result<Vec<Repository>> {
     print!("Fetching repositories... ");
@@ -22,7 +22,11 @@ pub async fn fetch_repos(token: &str) -> octocrab::Result<Vec<Repository>> {
     all_repos.extend(
         page.items
             .into_iter()
-            .map(|repo| (repo.name, repo.ssh_url.unwrap_or_default()))
+            .map(|repo| (
+                repo.name,
+                repo.ssh_url.unwrap_or_default(),
+                repo.description.unwrap_or_else(|| "No description".to_string())
+            ))
     );
 
     print!("{}\u{2713}", "\r".repeat(50)); // Clear line and show checkmark
@@ -37,7 +41,11 @@ pub async fn fetch_repos(token: &str) -> octocrab::Result<Vec<Repository>> {
         all_repos.extend(
             page.items
                 .into_iter()
-                .map(|repo| (repo.name, repo.ssh_url.unwrap_or_default()))
+                .map(|repo| (
+                    repo.name,
+                    repo.ssh_url.unwrap_or_default(),
+                    repo.description.unwrap_or_else(|| "No description".to_string())
+                ))
         );
         print!("{}\u{2713}", "\r".repeat(50)); // Clear line and show checkmark
         print!("\rFetched page {} ({} repos so far)... ", page_count, all_repos.len());
@@ -56,9 +64,9 @@ pub fn generate_dummy_repos() -> Vec<Repository> {
     let mut dummy_repos = Vec::with_capacity(100);
 
     // Add some special repositories that are easy to find
-    dummy_repos.push(("awesome-project".to_string(), "git@github.com:user/awesome-project.git".to_string()));
-    dummy_repos.push(("test-repository".to_string(), "git@github.com:user/test-repository.git".to_string()));
-    dummy_repos.push(("sample-code".to_string(), "git@github.com:user/sample-code.git".to_string()));
+    dummy_repos.push(("awesome-project".to_string(), "git@github.com:user/awesome-project.git".to_string(), "An awesome project with lots of features".to_string()));
+    dummy_repos.push(("test-repository".to_string(), "git@github.com:user/test-repository.git".to_string(), "Repository for testing purposes".to_string()));
+    dummy_repos.push(("sample-code".to_string(), "git@github.com:user/sample-code.git".to_string(), "Sample code examples".to_string()));
 
     // Add repositories by category
     let categories = ["api", "web", "mobile", "backend", "frontend", "database", "utils", "tools", "docs", "test"];
@@ -67,32 +75,25 @@ pub fn generate_dummy_repos() -> Vec<Repository> {
         let category = categories[i % categories.len()];
         let name = format!("{}-project-{}", category, i);
         let url = format!("git@github.com:user/{}.git", name);
-        dummy_repos.push((name, url));
+        let description = format!("A {} project for {}", category, if i % 2 == 0 { "development" } else { "production" });
+        dummy_repos.push((name, url, description));
     }
 
     dummy_repos
 }
 
 pub fn extract_repo_info(selection: &str) -> Option<(String, String, Option<String>)> {
-    // Extract repository name and URL from selection
-    if let Some((repo_name, url_part)) = selection.split_once(" (") {
-        let url = url_part.trim_end_matches(")");
-        let _clone_cmd = format!("git clone {}", url); // Prefix with underscore to indicate intentional non-use
+    // Extract repository name and description from selection
+    if let Some((repo_name, description_part)) = selection.split_once(" (") {
+        let _description = description_part.trim_end_matches(")"); // Prefix with underscore to indicate intentional non-use
+
+        // Construct a URL based on the repository name
+        let url = format!("git@github.com:user/{}.git", repo_name);
 
         // Extract GitHub repo path for browser URL
-        let browser_url = if url.contains("github.com") {
-            let parts: Vec<&str> = url.split(':').collect();
-            if parts.len() > 1 {
-                let repo_path = parts[1].trim_end_matches(".git");
-                Some(format!("https://github.com/{}", repo_path))
-            } else {
-                None
-            }
-        } else {
-            None
-        };
+        let browser_url = Some(format!("https://github.com/user/{}", repo_name));
 
-        Some((repo_name.to_string(), url.to_string(), browser_url))
+        Some((repo_name.to_string(), url, browser_url))
     } else {
         None
     }

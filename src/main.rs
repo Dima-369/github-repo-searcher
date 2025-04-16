@@ -7,10 +7,8 @@ use std::sync::Once;
 
 mod filter;
 mod cli;
-mod clipboard;
 mod fuzzy_finder;
 mod github;
-mod menu;
 
 // Global flag to track if Ctrl+C was pressed
 pub static INTERRUPTED: AtomicBool = AtomicBool::new(false);
@@ -46,7 +44,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // Create formatted choices for the fuzzy finder
     let choices: Vec<String> = repos
         .into_iter()
-        .map(|(name, url)| format!("{} ({})", name, url))
+        .map(|(name, _url, description)| format!("{} ({})", name, description))
         .collect();
 
     // Create and run the fuzzy finder
@@ -60,40 +58,41 @@ async fn main() -> Result<(), Box<dyn Error>> {
     };
 
     // Extract repository name and URL from selection
-    if let Some((repo_name, url, browser_url)) = github::extract_repo_info(&selection) {
-        let clone_cmd = format!("git clone {}", url);
+    if let Some((repo_name, _url, browser_url)) = github::extract_repo_info(&selection) {
+        // Always open in browser
+        if let Some(browser_url) = browser_url {
+            println!("Opening repository in browser: {}", browser_url);
 
-        // Create menu options
-        let mut options = vec![
-            menu::MenuOption {
-                key: 'c',
-                description: "Copy git clone command".to_string(),
-                value: clone_cmd.clone(),
-            },
-            menu::MenuOption {
-                key: 's',
-                description: "Copy SSH URL".to_string(),
-                value: url.clone(),
-            },
-        ];
+            // Open the URL in the default browser
+            let open_command = if cfg!(target_os = "macos") {
+                std::process::Command::new("open")
+                    .arg(&browser_url)
+                    .output()
+            } else if cfg!(target_os = "linux") {
+                std::process::Command::new("xdg-open")
+                    .arg(&browser_url)
+                    .output()
+            } else if cfg!(target_os = "windows") {
+                std::process::Command::new("cmd")
+                    .args(["/c", "start", &browser_url])
+                    .output()
+            } else {
+                println!("Opening browser not supported on this platform.");
+                println!("URL: {}", browser_url);
+                // Just return a dummy successful result
+                Ok(std::process::Command::new("true").output().unwrap())
+            };
 
-        // Add browser option if available
-        if let Some(ref browser_url) = browser_url {
-            options.push(menu::MenuOption {
-                key: 'o',
-                description: "Open in browser".to_string(),
-                value: browser_url.clone(),
-            });
+            match open_command {
+                Ok(_) => println!("Browser opened successfully"),
+                Err(e) => eprintln!("Failed to open browser: {}", e)
+            }
+
+            // Small delay to ensure operation completes
+            thread::sleep(Duration::from_millis(100));
+        } else {
+            println!("No browser URL available for repository: {}", repo_name);
         }
-
-        // Display the interactive menu
-        menu::display_menu(&repo_name, &options);
-
-        // Handle user's menu choice
-        menu::handle_menu_choice(&clone_cmd, &url, &browser_url)?;
-
-        // Small delay to ensure operation completes
-        thread::sleep(Duration::from_millis(100));
     } else {
         println!("Error: Could not parse repository information from selection");
     }

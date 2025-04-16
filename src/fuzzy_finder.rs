@@ -87,27 +87,24 @@ impl FuzzyFinder {
     fn render<W: Write>(&self, screen: &mut W) -> io::Result<()> {
         // Get terminal size
         let (width, height) = termion::terminal_size().unwrap_or((80, 24));
-        
+
         // Clear screen
         write!(screen, "{}{}", clear::All, cursor::Goto(1, 1))?;
 
-        // Display header
-        write!(screen, "{}{}> {}{}", color::Fg(color::Blue), style::Bold, self.query, style::Reset)?;
-        write!(screen, "{}\r\n", cursor::Goto(self.cursor_pos as u16 + 3, 1))?;
+        // Calculate available space for items (accounting for prompt, input, and status lines)
+        let available_lines = height as usize - 4; // Prompt line + input line + status line + separator line
 
-        // Calculate available space for items (accounting for header and status lines)
-        let available_lines = height as usize - 3; // Header line + status line + separator line
-        
         // Adjust max_display based on available space
         let display_count = std::cmp::min(available_lines, self.filtered_items.len());
         let end_idx = std::cmp::min(self.scroll_offset + display_count, self.filtered_items.len());
 
+        // Display items
         for i in self.scroll_offset..end_idx {
             let item = &self.filtered_items[i];
 
             // Highlight selected item
             if i == self.selected_index {
-                write!(screen, "{}{}{} {}{}", color::Fg(color::Green), style::Bold, ">", item, style::Reset)?;
+                write!(screen, "{}{}> {}{}", color::Fg(color::Green), style::Bold, item, style::Reset)?;
             } else {
                 write!(screen, "  {}", item)?;
             }
@@ -116,21 +113,41 @@ impl FuzzyFinder {
         }
 
         // Fill any remaining lines with empty space
-        let empty_lines = height as usize - 3 - (end_idx - self.scroll_offset);
+        let empty_lines = height as usize - 4 - (end_idx - self.scroll_offset);
         for _ in 0..empty_lines {
             write!(screen, "\r\n")?;
         }
-        
+
         // Position cursor at the bottom of the screen for status line
-        write!(screen, "{}", cursor::Goto(1, height - 2))?;
-        
-        // Display status line at the bottom
-        write!(screen, "{}{}{}\r\n", color::Fg(color::Blue), "-".repeat(width as usize), style::Reset)?;
-        write!(screen, "{}[{}/{}] Press Ctrl+C to quit, Enter to select{}",
-               color::Fg(color::Yellow),
-               self.filtered_items.len(),
-               self.items.len(),
-               style::Reset)?;
+        write!(screen, "{}", cursor::Goto(1, height - 3))?;
+
+        // Create the status text with count
+        let count_text = format!("{}/{}", self.filtered_items.len(), self.items.len());
+
+        // Display status line at the bottom (format: "12/12 ───────────────")
+        write!(
+            screen,
+            "{}{} {}{}\r\n",
+            color::Fg(color::Yellow),
+            count_text,
+            color::Fg(color::Blue),
+            "─".repeat(width as usize - count_text.len() - 1)
+        )?;
+        write!(screen, "{}", style::Reset)?;
+
+        // Display prompt at the bottom
+        write!(screen, "{}>{}", color::Fg(color::Blue), style::Reset)?;
+
+        // Move to the next line for input text
+        write!(screen, "\r\n")?;
+
+        // Display the input text on a new line
+        if !self.query.is_empty() {
+            write!(screen, "{}", self.query)?;
+        }
+
+        // Position cursor at the right position in the input line
+        write!(screen, "{}", cursor::Goto(self.cursor_pos as u16 + 1, height))?;
 
         screen.flush()?;
         Ok(())
