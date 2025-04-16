@@ -107,13 +107,19 @@ pub fn generate_dummy_repos() -> (String, Vec<Repository>) {
 }
 
 pub fn extract_repo_info(selection: &str, username: &str) -> Option<(String, String, Option<String>)> {
+    // First, remove the GitHub indicator [GH] if present
+    let cleaned_selection = selection.replace(" [GH]", "");
+
+    // Remove the private indicator if present
+    let cleaned_selection = cleaned_selection.replace(" 🔒", "");
+
     // Extract repository name and description from selection
-    let repo_name = if let Some((name, _description_part)) = selection.split_once(" (") {
+    let repo_name = if let Some((name, _description_part)) = cleaned_selection.split_once(" (") {
         // Selection has a description in parentheses
-        name
+        name.trim()
     } else {
         // Selection is just the repo name without description
-        selection
+        cleaned_selection.trim()
     };
 
     // Construct a URL based on the repository name and username

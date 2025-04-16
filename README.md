@@ -68,4 +68,5 @@ api-client [GL] (A GitLab API client)
 
 ## Future Plans
 
-- fix that cursor is not shown and does not respect arrow left and right in text input
+- refactor main.rs - especially browser opening
+- fix wrong gitlab urls

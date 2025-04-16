@@ -167,20 +167,30 @@ pub async fn fetch_repos(token: &str) -> Result<(String, Vec<Repository>), Box<d
 }
 
 pub fn extract_repo_info(selection: &str, username: &str) -> Option<(String, String, Option<String>)> {
+    // First, remove the GitLab indicator [GL] if present
+    let cleaned_selection = selection.replace(" [GL]", "");
+
+    // Remove the private indicator if present
+    let cleaned_selection = cleaned_selection.replace(" 🔒", "");
+
     // Extract repository name and description from selection
-    let repo_name = if let Some((name, _description_part)) = selection.split_once(" (") {
+    let repo_name = if let Some((name, _description_part)) = cleaned_selection.split_once(" (") {
         // Selection has a description in parentheses
-        name
+        name.trim()
     } else {
         // Selection is just the repo name without description
-        selection
+        cleaned_selection.trim()
     };
 
+    // Convert repo name to kebab-case for GitLab URLs
+    // This is a simple conversion that replaces spaces with hyphens and makes lowercase
+    let repo_path = repo_name.to_lowercase().replace(" ", "-");
+
     // Construct a URL based on the repository name and username
-    let url = format!("git@gitlab.com:{}/{}.git", username, repo_name);
+    let url = format!("git@gitlab.com:{}/{}.git", username, repo_path);
 
     // Extract GitLab repo path for browser URL
-    let browser_url = Some(format!("https://gitlab.com/{}/{}", username, repo_name));
+    let browser_url = Some(format!("https://gitlab.com/{}/{}", username, repo_path));
 
     Some((repo_name.to_string(), url, browser_url))
 }

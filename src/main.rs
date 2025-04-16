@@ -32,7 +32,8 @@ mod gitlab;
 async fn fetch_and_cache_repos(
     args: &cli::AppArgs,
     all_repos: &mut Vec<cache::RepoData>,
-    username: &mut String
+    github_username: &mut String,
+    gitlab_username: &mut String
 ) -> Result<(), Box<dyn std::error::Error>> {
     // Create a new cache
     let mut cache_data = cache::CacheData::new();
@@ -40,9 +41,7 @@ async fn fetch_and_cache_repos(
     // Fetch from GitHub if token is provided
     if let Some(github_token) = &args.github_token {
         let (gh_username, gh_repos) = github::fetch_repos(github_token).await?;
-        if username.is_empty() {
-            *username = gh_username.clone();
-        }
+        *github_username = gh_username.clone();
 
         // Convert GitHub repos to RepoData
         let github_repo_data: Vec<cache::RepoData> = gh_repos
@@ -54,15 +53,13 @@ async fn fetch_and_cache_repos(
         all_repos.extend(github_repo_data.clone());
 
         // Update cache
-        cache_data.update_github(gh_username, github_repo_data);
+        cache_data.update_github(github_username.clone(), github_repo_data);
     }
 
     // Fetch from GitLab if token is provided
     if let Some(gitlab_token) = &args.gitlab_token {
         let (gl_username, gl_repos) = gitlab::fetch_repos(gitlab_token).await?;
-        if username.is_empty() {
-            *username = gl_username.clone();
-        }
+        *gitlab_username = gl_username.clone();
 
         // Convert GitLab repos to RepoData
         let gitlab_repo_data: Vec<cache::RepoData> = gl_repos
@@ -74,7 +71,7 @@ async fn fetch_and_cache_repos(
         all_repos.extend(gitlab_repo_data.clone());
 
         // Update cache
-        cache_data.update_gitlab(gl_username, gitlab_repo_data);
+        cache_data.update_gitlab(gitlab_username.clone(), gitlab_repo_data);
     }
 
     // Save the cache
@@ -109,12 +106,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     // Get repositories (either real or dummy) and combine them
     let mut all_repos: Vec<RepoData> = Vec::new();
-    let mut username = String::new();
+    let mut github_username = String::new();
+    let mut gitlab_username = String::new();
 
     if args.use_dummy {
         // Use dummy data
         let (dummy_username, dummy_repos) = github::generate_dummy_repos();
-        username = dummy_username;
+        github_username = dummy_username.clone();
+        gitlab_username = "Gira".to_string(); // Default GitLab username for dummy data
 
         // Convert to RepoData with GitHub source
         all_repos.extend(dummy_repos.into_iter().map(|(name, url, description, owner, is_fork, is_private)| {
@@ -142,28 +141,29 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     // Get all repositories from cache
                     all_repos = cache_data.get_all_repositories();
 
-                    // Set username from GitHub or GitLab cache, preferring GitHub
+                    // Set usernames from GitHub or GitLab cache
                     if let Some(github) = &cache_data.github {
-                        username = github.cache_info.username.clone();
-                    } else if let Some(gitlab) = &cache_data.gitlab {
-                        username = gitlab.cache_info.username.clone();
+                        github_username = github.cache_info.username.clone();
+                    }
+                    if let Some(gitlab) = &cache_data.gitlab {
+                        gitlab_username = gitlab.cache_info.username.clone();
                     }
 
                     println!("Loaded {} repositories from cache", all_repos.len());
                 } else {
                     // Cache expired, fetch fresh data
                     println!("Cache expired, fetching fresh data...");
-                    fetch_and_cache_repos(&args, &mut all_repos, &mut username).await?;
+                    fetch_and_cache_repos(&args, &mut all_repos, &mut github_username, &mut gitlab_username).await?;
                 }
             } else {
                 // No cache, fetch fresh data
                 println!("No cache found, fetching repositories...");
-                fetch_and_cache_repos(&args, &mut all_repos, &mut username).await?;
+                fetch_and_cache_repos(&args, &mut all_repos, &mut github_username, &mut gitlab_username).await?;
             }
         } else {
             // Force download
             println!("Force downloading repositories...");
-            fetch_and_cache_repos(&args, &mut all_repos, &mut username).await?;
+            fetch_and_cache_repos(&args, &mut all_repos, &mut github_username, &mut gitlab_username).await?;
         }
     }
 
@@ -199,16 +199,16 @@ async fn main() -> Result<(), Box<dyn Error>> {
         let is_gitlab = selection.contains(" [GL]");
 
         let repo_info = if is_gitlab {
-            gitlab::extract_repo_info(&selection, &username)
+            gitlab::extract_repo_info(&selection, &gitlab_username)
         } else {
-            github::extract_repo_info(&selection, &username)
+            github::extract_repo_info(&selection, &github_username)
         };
 
         if let Some((repo_name, _url, browser_url)) = repo_info {
             // Always open in browser
             if let Some(browser_url) = browser_url {
                 println!("\nOpening repository in browser: {}", browser_url);
-                println!("Username: {}", username);
+                println!("Username: {}", if is_gitlab { &gitlab_username } else { &github_username });
                 println!("Repository: {}", repo_name);
 
                 // Open URL in browser
