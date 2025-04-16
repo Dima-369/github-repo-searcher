@@ -43,9 +43,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     };
 
     // Extract repository name and URL from selection
-    if let Some((repo_name, _url, browser_url)) =
-        github::extract_repo_info(&selection, &username)
-    {
+    if let Some((repo_name, _url, browser_url)) = github::extract_repo_info(&selection, &username) {
         // Always open in browser
         if let Some(browser_url) = browser_url {
             println!("\nOpening repository in browser: {}", browser_url);
@@ -63,26 +61,32 @@ async fn main() -> Result<(), Box<dyn Error>> {
             // Open URL in browser
             #[cfg(target_os = "macos")]
             {
-                std::process::Command::new("open")
+                process::Command::new("open")
                     .arg(&browser_url)
                     .spawn()
-                    .expect("Failed to open URL in browser");
+                    .expect("Failed to open URL in browser")
+                    .wait()
+                    .expect("Failed to wait on browser process");
             }
 
             #[cfg(target_os = "windows")]
             {
-                std::process::Command::new("cmd")
+                process::Command::new("cmd")
                     .args(["/c", "start", &browser_url])
                     .spawn()
-                    .expect("Failed to open URL in browser");
+                    .expect("Failed to open URL in browser")
+                    .wait()
+                    .expect("Failed to wait on browser process");
             }
 
             #[cfg(target_os = "linux")]
             {
-                std::process::Command::new("xdg-open")
+                process::Command::new("xdg-open")
                     .arg(&browser_url)
                     .spawn()
-                    .expect("Failed to open URL in browser");
+                    .expect("Failed to open URL in browser")
+                    .wait()
+                    .expect("Failed to wait on browser process");
             }
 
             // Small delay to ensure operation completes

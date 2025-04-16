@@ -8,11 +8,11 @@ pub async fn fetch_repos(token: &str) -> octocrab::Result<(String, Vec<Repositor
     std::io::stdout().flush().unwrap();
 
     let octocrab = Octocrab::builder().personal_token(token.to_string()).build()?;
-    
+
     // Get authenticated user information
     let user = octocrab.current().user().await?;
     let username = user.login;
-    
+
     println!("{}\u{2713}", "\r".repeat(50)); // Clear line and show checkmark
     print!("Fetching repositories for {}... ", username);
     std::io::stdout().flush().unwrap();
@@ -96,7 +96,7 @@ pub fn generate_dummy_repos() -> (String, Vec<Repository>) {
 
 pub fn extract_repo_info(selection: &str, username: &str) -> Option<(String, String, Option<String>)> {
     // Extract repository name and description from selection
-    let repo_name = if let Some((name, description_part)) = selection.split_once(" (") {
+    let repo_name = if let Some((name, _description_part)) = selection.split_once(" (") {
         // Selection has a description in parentheses
         name
     } else {
