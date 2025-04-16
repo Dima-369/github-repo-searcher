@@ -62,27 +62,23 @@ impl FuzzyFinder {
     }
 
     fn move_cursor_up(&mut self) {
-        if !self.filtered_items.is_empty() {
-            if self.selected_index > 0 {
-                self.selected_index -= 1;
+        if !self.filtered_items.is_empty() && self.selected_index > 0 {
+            self.selected_index -= 1;
 
-                // Adjust scroll offset if needed
-                if self.selected_index < self.scroll_offset {
-                    self.scroll_offset = self.selected_index;
-                }
+            // Adjust scroll offset if needed
+            if self.selected_index < self.scroll_offset {
+                self.scroll_offset = self.selected_index;
             }
         }
     }
 
     fn move_cursor_down(&mut self) {
-        if !self.filtered_items.is_empty() {
-            if self.selected_index < self.filtered_items.len() - 1 {
-                self.selected_index += 1;
+        if !self.filtered_items.is_empty() && self.selected_index < self.filtered_items.len() - 1 {
+            self.selected_index += 1;
 
-                // Adjust scroll offset if needed
-                if self.selected_index >= self.scroll_offset + self.max_display {
-                    self.scroll_offset = self.selected_index - self.max_display + 1;
-                }
+            // Adjust scroll offset if needed
+            if self.selected_index >= self.scroll_offset + self.max_display {
+                self.scroll_offset = self.selected_index - self.max_display + 1;
             }
         }
     }
