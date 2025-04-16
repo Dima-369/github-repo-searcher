@@ -1,8 +1,8 @@
-extern crate termion;
 use std::error::Error;
 use std::io::Write;
 use std::process;
 use std::time::Duration;
+extern crate termion;
 
 // No platform-specific imports needed with ctrlc crate
 
@@ -18,15 +18,12 @@ fn setup_ctrl_c_handler() {
     // Use the ctrlc crate which works reliably across platforms
     ctrlc::set_handler(move || {
         // Ensure terminal is in a clean state before exiting
-        print!(
-            "{}{}\nReceived Ctrl+C, exiting...",
-            termion::screen::ToMainScreen,
-            termion::cursor::Show
-        );
+        print!("{}{}\nReceived Ctrl+C, exiting...",
+               termion::screen::ToMainScreen,
+               termion::cursor::Show);
         std::io::stdout().flush().unwrap();
         process::exit(0);
-    })
-    .expect("Error setting Ctrl+C handler");
+    }).expect("Error setting Ctrl+C handler");
 }
 
 #[tokio::main]
@@ -94,9 +91,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         };
 
         // Extract repository name and URL from selection
-        if let Some((repo_name, _url, browser_url)) =
-            github::extract_repo_info(&selection, &username)
-        {
+        if let Some((repo_name, _url, browser_url)) = github::extract_repo_info(&selection, &username) {
             // Always open in browser
             if let Some(browser_url) = browser_url {
                 println!("\nOpening repository in browser: {}", browser_url);
@@ -147,4 +142,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
             println!("Error: Could not parse repository information from selection");
         }
     }
+    // The loop above never exits normally, only through Ctrl+C or Esc
+    // which call libc::exit(0), so this is unreachable
 }
