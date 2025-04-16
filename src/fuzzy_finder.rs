@@ -231,7 +231,6 @@ impl FuzzyFinder {
                     },
                     Key::Esc => {
                         // Exit with code 0 on Escape
-                        println!("\nExiting due to Escape key press");
                         unsafe { libc::_exit(0); }
                     },
                     _ => {}
