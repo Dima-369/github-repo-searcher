@@ -223,8 +223,9 @@ impl FuzzyFinder {
             if let Some(Ok(key)) = keys.next() {
                 match key {
                     Key::Char('\n') | Key::Char('\r') => {
-                        // Return selected item
+                        // Return selected item but don't exit the program
                         if !self.filtered_items.is_empty() {
+                            // Return the selected item to be processed
                             return Some(self.filtered_items[self.selected_index].clone());
                         }
                     }

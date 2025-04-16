@@ -74,65 +74,75 @@ async fn main() -> Result<(), Box<dyn Error>> {
         })
         .collect();
 
-    // Create and run the fuzzy finder
+    // Create the fuzzy finder
     let mut finder = fuzzy_finder::FuzzyFinder::new(choices);
-    let selection = match finder.run() {
-        Some(selected) => selected,
-        None => {
-            println!("No selection made");
-            unsafe {
-                libc::exit(0);
+
+    // Run the fuzzy finder in a loop
+    loop {
+        let selection = match finder.run() {
+            Some(selected) => selected,
+            None => {
+                println!("No selection made");
+                unsafe {
+                    libc::exit(0);
+                }
             }
-        }
-    };
+        };
 
-    // Extract repository name and URL from selection
-    if let Some((repo_name, _url, browser_url)) = github::extract_repo_info(&selection, &username) {
-        // Always open in browser
-        if let Some(browser_url) = browser_url {
-            println!("\nOpening repository in browser: {}", browser_url);
-            println!("Username: {}", username);
-            println!("Repository: {}", repo_name);
+        // Extract repository name and URL from selection
+        if let Some((repo_name, _url, browser_url)) = github::extract_repo_info(&selection, &username) {
+            // Always open in browser
+            if let Some(browser_url) = browser_url {
+                println!("\nOpening repository in browser: {}", browser_url);
+                println!("Username: {}", username);
+                println!("Repository: {}", repo_name);
 
-            // Open URL in browser
-            #[cfg(target_os = "macos")]
-            {
-                process::Command::new("open")
-                    .arg(&browser_url)
-                    .spawn()
-                    .expect("Failed to open URL in browser")
-                    .wait()
-                    .expect("Failed to wait on browser process");
+                // Open URL in browser
+                #[cfg(target_os = "macos")]
+                {
+                    process::Command::new("open")
+                        .arg(&browser_url)
+                        .spawn()
+                        .expect("Failed to open URL in browser")
+                        .wait()
+                        .expect("Failed to wait on browser process");
+                }
+
+                #[cfg(target_os = "windows")]
+                {
+                    process::Command::new("cmd")
+                        .args(["/c", "start", &browser_url])
+                        .spawn()
+                        .expect("Failed to open URL in browser")
+                        .wait()
+                        .expect("Failed to wait on browser process");
+                }
+
+                #[cfg(target_os = "linux")]
+                {
+                    process::Command::new("xdg-open")
+                        .arg(&browser_url)
+                        .spawn()
+                        .expect("Failed to open URL in browser")
+                        .wait()
+                        .expect("Failed to wait on browser process");
+                }
+
+                // Small delay to ensure operation completes
+                tokio::time::sleep(Duration::from_millis(100)).await;
+
+                // Continue running the fuzzy finder
+                println!("\nPress any key to continue searching or Ctrl+C/Esc to exit...");
+                tokio::time::sleep(Duration::from_secs(1)).await;
+            } else {
+                println!("No browser URL available for repository: {}", repo_name);
             }
-
-            #[cfg(target_os = "windows")]
-            {
-                process::Command::new("cmd")
-                    .args(["/c", "start", &browser_url])
-                    .spawn()
-                    .expect("Failed to open URL in browser")
-                    .wait()
-                    .expect("Failed to wait on browser process");
-            }
-
-            #[cfg(target_os = "linux")]
-            {
-                process::Command::new("xdg-open")
-                    .arg(&browser_url)
-                    .spawn()
-                    .expect("Failed to open URL in browser")
-                    .wait()
-                    .expect("Failed to wait on browser process");
-            }
-
-            // Small delay to ensure operation completes
-            tokio::time::sleep(Duration::from_millis(100)).await;
         } else {
-            println!("No browser URL available for repository: {}", repo_name);
+            println!("Error: Could not parse repository information from selection");
         }
-    } else {
-        println!("Error: Could not parse repository information from selection");
     }
-
+    // The loop above never exits normally, only through Ctrl+C or Esc
+    // which call libc::exit(0), so this is unreachable
+    #[allow(unreachable_code)]
     Ok(())
 }

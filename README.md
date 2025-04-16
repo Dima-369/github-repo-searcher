@@ -49,7 +49,7 @@ game-demo 🔒 (fork: Private fork of a game)
 ## Keyboard Controls
 
 - **Up/Down Arrow**: Navigate through repositories
-- **Enter**: Select repository and open in browser
+- **Enter**: Select repository and open in browser (program continues running)
 - **Ctrl+C or Esc**: Exit the program
 
 ## Bugs
