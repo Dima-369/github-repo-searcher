@@ -10,6 +10,7 @@ use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 use termion::screen::IntoAlternateScreen;
 use termion::style;
+use termion as terminal;
 
 use crate::filter;
 
@@ -22,6 +23,8 @@ pub struct FuzzyFinder {
     selected_index: usize,
     max_display: usize,
     scroll_offset: usize,
+    status_message: Option<String>,
+    error_message: Option<String>,
 }
 
 impl FuzzyFinder {
@@ -51,7 +54,25 @@ impl FuzzyFinder {
             selected_index: 0,
             max_display,
             scroll_offset: 0,
+            status_message: None,
+            error_message: None,
         }
+    }
+
+    /// Updates the items list and refreshes the display
+    pub fn update_items(&mut self, new_items: Vec<String>) {
+        self.items = new_items;
+        self.update_filter();
+    }
+
+    /// Sets a status message to be displayed in the UI
+    pub fn set_status_message(&mut self, message: Option<String>) {
+        self.status_message = message;
+    }
+
+    /// Sets an error message to be displayed in the UI
+    pub fn set_error_message(&mut self, message: Option<String>) {
+        self.error_message = message;
     }
 
     fn update_filter(&mut self) {
@@ -158,14 +179,61 @@ impl FuzzyFinder {
             write!(screen, "\r\n")?;
         }
 
+        // Reserve space for status messages (2 lines)
+        let status_area_height: u16 = 2;
+
         // Fill any remaining lines with empty space
-        let empty_lines = height as usize - 3 - (end_idx - self.scroll_offset);
+        let display_items_count = end_idx - self.scroll_offset;
+        let required_lines = 4 + status_area_height as usize + display_items_count;
+        let empty_lines = if height as usize > required_lines {
+            height as usize - required_lines
+        } else {
+            0 // No empty lines if we don't have enough space
+        };
+
         for _ in 0..empty_lines {
             write!(screen, "\r\n")?;
         }
 
-        // Position cursor at the bottom of the screen for status line
-        write!(screen, "{}", cursor::Goto(1, height - 1))?;
+        // Calculate the position for the status area (safely)
+        let status_pos = if height > 3 + status_area_height {
+            height - 3 - status_area_height
+        } else {
+            1 // Fallback to top of screen if terminal is too small
+        };
+
+        // Position cursor for the status area
+        write!(screen, "{}", cursor::Goto(1, status_pos))?;
+
+        // Clear the status area (2 lines)
+        for _ in 0..status_area_height {
+            write!(screen, "{}{}", terminal::clear::CurrentLine, "\r\n")?;
+        }
+
+        // Move back to the start of the status area
+        write!(screen, "{}", cursor::Goto(1, status_pos))?;
+
+        // Display error message if any (in red)
+        if let Some(error) = &self.error_message {
+            write!(
+                screen,
+                "{}>Error: {}{}",
+                color::Fg(color::Red),
+                error,
+                style::Reset
+            )?;
+        }
+        // Otherwise display status message if any (in green)
+        else if let Some(status) = &self.status_message {
+            write!(
+                screen,
+                "{}>{}{}",
+                color::Fg(color::Green),
+                status,
+                style::Reset
+            )?;
+        }
+        write!(screen, "\r\n")?;
 
         // Create the status text with count
         let count_text = format!("{}/{}", self.filtered_items.len(), self.items.len());
@@ -213,10 +281,12 @@ impl FuzzyFinder {
             )?;
         }
 
+        // Ensure all output is flushed to the screen
         screen.flush()?;
         Ok(())
     }
 
+    /// Run the fuzzy finder with support for background updates
     pub fn run(&mut self) -> Option<String> {
         // Set up terminal
         let mut screen = stdout()
@@ -234,8 +304,19 @@ impl FuzzyFinder {
         let stdin = stdin();
         let mut keys = stdin.keys();
 
+        // For non-blocking input
+        let mut last_render = std::time::Instant::now();
+        let render_interval = Duration::from_millis(100); // Refresh UI every 100ms
+
         loop {
-            // Process key input
+            // Check if it's time to re-render (for status updates)
+            let now = std::time::Instant::now();
+            if now.duration_since(last_render) >= render_interval {
+                self.render(&mut screen).unwrap();
+                last_render = now;
+            }
+
+            // Process key input (non-blocking)
             if let Some(Ok(key)) = keys.next() {
                 match key {
                     Key::Char('\n') | Key::Char('\r') => {
